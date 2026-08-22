@@ -87,7 +87,7 @@ Vite อ่าน `.env` ที่ราก repo (`apps/web/vite.config.ts` ต�
 
 > `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` และ `DATABASE_URL` เป็นค่าฝั่งเซิร์ฟเวอร์ ห้ามใส่ prefix `VITE_`
 
-บน Windows ถ้า `db.*.supabase.co` resolve ไม่ได้ แอปจะสลับไป pooler `aws-0-ap-southeast-2.pooler.supabase.com:6543` ให้อัตโนมัติ
+บน Windows ถ้า `db.*.supabase.co` resolve ไม่ได้ แอป, `pnpm db:migrate` และ `pnpm db:seed` จะสลับไป pooler `aws-0-ap-southeast-2.pooler.supabase.com:6543` ให้อัตโนมัติ
 
 ---
 

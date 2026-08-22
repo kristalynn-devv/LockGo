@@ -17,10 +17,29 @@ function required(name: string): string {
   return value;
 }
 
+function resolveDatabaseUrl(raw: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return raw;
+  }
+
+  if (!parsed.hostname.startsWith('db.') || !parsed.hostname.endsWith('.supabase.co')) {
+    return raw;
+  }
+
+  const ref = parsed.hostname.slice('db.'.length, parsed.hostname.indexOf('.supabase.co'));
+  parsed.hostname = 'aws-0-ap-southeast-2.pooler.supabase.com';
+  parsed.port = '6543';
+  parsed.username = `postgres.${ref}`;
+  return parsed.toString();
+}
+
 export const dbEnv = {
   optional,
   get databaseUrl() {
-    return required('DATABASE_URL');
+    return resolveDatabaseUrl(required('DATABASE_URL'));
   },
   get supabaseUrl() {
     return required('SUPABASE_URL');
