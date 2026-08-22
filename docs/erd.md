@@ -133,4 +133,4 @@ erDiagram
 | Google / email identity | `auth.users` + provider ของ Supabase Auth |
 | Realtime | subscription บน `reservations` ไม่ใช่ตารางใหม่ |
 
-ยังไม่สร้างตารางใน `public` — ว่างอยู่จนบล็อก B
+ตารางอยู่ใน `public` ของโปรเจกต์ LockGo แล้ว หลังบล็อก B
