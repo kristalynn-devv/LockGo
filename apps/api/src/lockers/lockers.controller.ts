@@ -1,8 +1,11 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { ListLockersQuery } from './dto/list-lockers.query';
 import { LockersService } from './lockers.service';
 
+@ApiTags('lockers')
+@ApiBearerAuth()
 @Controller('lockers')
 @UseGuards(AuthGuard)
 export class LockersController {
