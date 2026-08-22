@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
-import { closeDb } from '../src/db/database';
+import { closeDb, getSql } from '../src/db/database';
 import { dbEnv } from '../src/db/env';
 
 const ALICE = {
@@ -160,5 +160,167 @@ describe('Reservations concurrency (e2e)', () => {
       .expect((res) => {
         expect(res.body.code).toBe('NO_AVAILABILITY');
       });
+  });
+
+  it('returns 403 when another user reads a reservation by id', async () => {
+    const startTime = futureHour(52);
+    const created = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `own-${startTime}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: startTime,
+        duration_hours: 1,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get(`/api/reservations/${created.body.id}`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(403)
+      .expect((res) => {
+        expect(res.body).toMatchObject({
+          statusCode: 403,
+          code: 'FORBIDDEN',
+        });
+      });
+
+    const own = await request(app.getHttpServer())
+      .get(`/api/reservations/${created.body.id}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    expect(own.body.id).toBe(created.body.id);
+    expect(own.body.status).toBe('Reserved');
+    expect(own.body.status).not.toBe('Active');
+  });
+
+  it('lists only the current user reservations', async () => {
+    const aliceStart = futureHour(56);
+    const bobStart = futureHour(58);
+
+    const aliceCreated = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `hist-alice-${aliceStart}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: aliceStart,
+        duration_hours: 1,
+      })
+      .expect(201);
+
+    const bobCreated = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .set('Idempotency-Key', `hist-bob-${bobStart}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: bobStart,
+        duration_hours: 1,
+      })
+      .expect(201);
+
+    const aliceList = await request(app.getHttpServer())
+      .get('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    const bobList = await request(app.getHttpServer())
+      .get('/api/reservations')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(200);
+
+    const aliceIds = aliceList.body.items.map((item: { id: string }) => item.id);
+    const bobIds = bobList.body.items.map((item: { id: string }) => item.id);
+
+    expect(aliceIds).toContain(aliceCreated.body.id);
+    expect(aliceIds).not.toContain(bobCreated.body.id);
+    expect(bobIds).toContain(bobCreated.body.id);
+    expect(bobIds).not.toContain(aliceCreated.body.id);
+  });
+
+  it('cancels a Reserved booking so the slot can be booked again', async () => {
+    const startTime = futureHour(62);
+    const payload = {
+      station_id: moChitId,
+      size: 'Large',
+      start_time: startTime,
+      duration_hours: 2,
+    };
+
+    const created = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `cancel-alice-${startTime}`)
+      .send(payload)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/cancel`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('FORBIDDEN');
+      });
+
+    const cancelled = await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/cancel`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    expect(cancelled.body.status).toBe('Cancelled');
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/cancel`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_CANCEL');
+      });
+
+    const rebooked = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .set('Idempotency-Key', `cancel-bob-${startTime}`)
+      .send(payload)
+      .expect(201);
+
+    expect(rebooked.body.status).toBe('Reserved');
+    expect(rebooked.body.id).not.toBe(created.body.id);
+  });
+
+  it('does not treat a past-deadline reservation as Active', async () => {
+    const startTime = futureHour(66);
+    const created = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `expired-${startTime}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: startTime,
+        duration_hours: 1,
+      })
+      .expect(201);
+
+    const sql = getSql();
+    await sql`
+      UPDATE public.reservations
+      SET no_show_deadline = now() - interval '1 minute'
+      WHERE id = ${created.body.id}::uuid
+    `;
+
+    const got = await request(app.getHttpServer())
+      .get(`/api/reservations/${created.body.id}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    expect(got.body.status).toBe('Expired');
+    expect(got.body.status).not.toBe('Active');
   });
 });
