@@ -28,11 +28,23 @@ async function applyHandMigrations(sql: postgres.Sql) {
     }
 
     const body = await readFile(resolve(dir, name), 'utf8');
-    await sql.begin(async (tx) => {
-      await tx.unsafe(body);
-      await tx`INSERT INTO private.lockgo_hand_migrations (name) VALUES (${name})`;
-    });
-    console.log(`applied hand migration ${name}`);
+    try {
+      await sql.begin(async (tx) => {
+        await tx.unsafe(body);
+        await tx`INSERT INTO private.lockgo_hand_migrations (name) VALUES (${name})`;
+      });
+      console.log(`applied hand migration ${name}`);
+    } catch (error) {
+      if (!alreadyPresent(error)) {
+        throw error;
+      }
+      await sql`
+        INSERT INTO private.lockgo_hand_migrations (name)
+        VALUES (${name})
+        ON CONFLICT (name) DO NOTHING
+      `;
+      console.log(`hand migration ${name} already present, recording`);
+    }
   }
 }
 
