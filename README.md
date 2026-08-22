@@ -17,6 +17,8 @@ _(TBD — ปัญหาที่แก้ ฟีเจอร์ที่ทำ
 
 _(TBD — แนบ diagram + อธิบายว่าทำไม read/write เดินผ่าน NestJS ทั้งหมด)_
 
+แผนภาพเต็มอยู่ที่ [docs/architecture.md](./docs/architecture.md)
+
 ```
 Frontend ──(Supabase Auth SDK)────> Supabase Auth        [Google OAuth / email+password]
 Frontend ──(REST + Bearer JWT)────> NestJS ──> Supabase  [read + write ทั้งหมด]
@@ -37,12 +39,12 @@ Frontend <─(Supabase Realtime)────  Supabase             [สัญญ
 
 ## 4. Installation
 
-_(TBD)_
-
 ```bash
 pnpm install
 cp .env.example .env   # แล้วเติมค่าจริง
 ```
+
+Monorepo: `apps/api` (NestJS) · `apps/web` (Vite + React + Tailwind) · `packages/shared`
 
 ## 5. Configuration
 
@@ -81,7 +83,12 @@ _(TBD — ขั้นตอน Google Cloud → Supabase)_
 
 ## 7. Run Application
 
-_(TBD)_
+```bash
+pnpm dev
+```
+
+- Web: `http://localhost:5173`
+- API: `http://localhost:3000`
 
 ## 8. Run Test
 
@@ -115,4 +122,5 @@ _(TBD — สร้างตอนบล็อก H ตาม TASKS.md ข้อ
 |------|---------|
 | [docs/requirements.md](./docs/requirements.md) | ข้อกำหนดรวมจาก Assessment + PRD และค่าที่ตัดสินแล้ว |
 | [docs/design.md](./docs/design.md) | Design token และ UI pattern |
-| `docs/erd.md` | ยังไม่มี — จะสร้างตอนบล็อก A ข้อ 4 พร้อมอธิบายความสัมพันธ์และเหตุผลที่ user แยกสองตาราง |
+| [docs/erd.md](./docs/erd.md) | ERD ความสัมพันธ์ และเหตุผลที่ user แยกสองตาราง |
+| [docs/architecture.md](./docs/architecture.md) | เส้น read / write / realtime |
