@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 
 export function configureApp(app: INestApplication) {
@@ -12,4 +13,15 @@ export function configureApp(app: INestApplication) {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  const document = SwaggerModule.createDocument(
+    app,
+    new DocumentBuilder()
+      .setTitle('LockGo API')
+      .setDescription('Find and reserve a locker')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build(),
+  );
+  SwaggerModule.setup('docs', app, document, { useGlobalPrefix: true });
 }
