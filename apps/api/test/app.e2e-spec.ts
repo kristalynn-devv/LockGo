@@ -3,8 +3,9 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { configureApp } from './../src/configure-app';
 
-describe('AppController (e2e)', () => {
+describe('API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -13,14 +14,31 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    configureApp(app);
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it('GET /api returns hello', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/api')
       .expect(200)
       .expect('Hello World!');
+  });
+
+  it('GET /api/lockers without a token returns 401', () => {
+    return request(app.getHttpServer())
+      .get('/api/lockers')
+      .expect(401)
+      .expect((res) => {
+        expect(res.body.code).toBe('UNAUTHORIZED');
+      });
+  });
+
+  it('POST /api/reservations without a token returns 401', () => {
+    return request(app.getHttpServer())
+      .post('/api/reservations')
+      .send({})
+      .expect(401);
   });
 
   afterEach(async () => {
