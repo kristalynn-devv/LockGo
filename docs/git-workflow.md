@@ -14,7 +14,7 @@
 | `4da6693` | C | เปิดเส้น Find & Reserve |
 | `fd3ec18` | D | พิสูจน์ยิงพร้อมกัน |
 | `8a89b40` | E | ประวัติและยกเลิก |
-| `b7f8505` | F | เดิน journey บนเว็บ |
+| `b7f8505` | F — UI | ทำหน้า Find / Detail / Reserve / Confirm / History |
 | `7548304` | G | เทสต์ตัวกรองและกฎช่องว่าง |
 | `082deb8` | H | โชว์ workflow / prompt / review |
 
