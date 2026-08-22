@@ -36,14 +36,34 @@ async function applyHandMigrations(sql: postgres.Sql) {
   }
 }
 
+function alreadyPresent(error: unknown): boolean {
+  let current: unknown = error;
+  while (current && typeof current === 'object') {
+    const code = (current as { code?: string }).code;
+    const message = String((current as { message?: string }).message ?? '');
+    if (code === '42710' || /already exists/i.test(message)) {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 async function main() {
   const client = postgres(dbEnv.databaseUrl, { max: 1, ssl: 'require' });
   const db = drizzle(client);
 
-  await migrate(db, {
-    migrationsFolder: resolve(__dirname, '../../drizzle'),
-  });
-  console.log('applied drizzle migrations');
+  try {
+    await migrate(db, {
+      migrationsFolder: resolve(__dirname, '../../drizzle'),
+    });
+    console.log('applied drizzle migrations');
+  } catch (error) {
+    if (!alreadyPresent(error)) {
+      throw error;
+    }
+    console.log('drizzle schema already present, skipping generated set');
+  }
 
   await applyHandMigrations(client);
   await client.end();

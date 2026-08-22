@@ -108,7 +108,8 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-`db:migrate` รัน Drizzle จาก `apps/api/drizzle/` แล้วตามด้วย SQL มือใน `supabase/migrations/` (trigger, EXCLUDE, RLS) **ห้ามใช้ `drizzle-kit push`**
+`db:migrate` รัน Drizzle จาก `apps/api/drizzle/` แล้วตามด้วย SQL มือใน `supabase/migrations/` (trigger, EXCLUDE, RLS) **ห้ามใช้ `drizzle-kit push`**  
+ถ้ารันซ้ำบนฐานที่มีตารางแล้ว สคริปต์จะข้ามชุดที่ลงไปแล้ว ไม่ต้องลบโปรเจกต์ทิ้ง
 
 ### ทางที่ 2 — Supabase CLI + Docker
 
