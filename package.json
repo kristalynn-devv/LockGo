@@ -1,0 +1,14 @@
+{
+  "name": "lockgo",
+  "private": true,
+  "packageManager": "pnpm@11.5.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @lockgo/api --filter @lockgo/web dev",
+    "dev:api": "pnpm --filter @lockgo/api dev",
+    "dev:web": "pnpm --filter @lockgo/web dev",
+    "build": "pnpm --filter @lockgo/api --filter @lockgo/web build",
+    "db:generate": "pnpm --filter @lockgo/api db:generate",
+    "db:migrate": "pnpm --filter @lockgo/api db:migrate",
+    "db:seed": "pnpm --filter @lockgo/api db:seed"
+  }
+}
