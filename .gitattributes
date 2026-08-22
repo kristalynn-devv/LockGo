@@ -1,0 +1,25 @@
+# บังคับให้ทุกไฟล์ในรีโปเป็น LF ไม่ว่าจะเขียนจากเครื่องไหน
+# สำคัญมากเมื่อ dev บน Windows แต่ CI / Docker รันบน Linux
+* text=auto eol=lf
+
+# สคริปต์ที่ต้องเป็น LF เสมอ ไม่งั้นรันบน Linux ไม่ได้
+*.sh text eol=lf
+*.bash text eol=lf
+
+# ไฟล์ของ Windows ที่ต้องเป็น CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ไฟล์ไบนารี ห้ามแตะ
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# ลดเสียงรบกวนเวลารีวิว PR
+pnpm-lock.yaml linguist-generated=true -diff
