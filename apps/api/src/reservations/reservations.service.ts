@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt } from 'drizzle-orm';
 import { ApiError } from '../common/http-error';
 import { getDb, getSql } from '../db/database';
 import { compartments, lockerStations, reservations } from '../db/schema';
@@ -16,6 +16,25 @@ type CreatedRow = {
   unit_price: string;
   duration_hours: number;
   total_price: string;
+};
+
+type ReservationRecord = typeof reservations.$inferSelect;
+
+type ReservationDetail = {
+  id: string;
+  reservationNumber: string;
+  startTime: Date;
+  endTime: Date;
+  noShowDeadline: Date;
+  status: string;
+  unitPrice: string;
+  durationHours: number;
+  totalPrice: string;
+  stationId: string;
+  stationName: string;
+  address: string;
+  size: string;
+  label: string;
 };
 
 @Injectable()
@@ -47,10 +66,129 @@ export class ReservationsService {
     }
   }
 
-  private async present(row: CreatedRow) {
+  async getById(userId: string, id: string) {
+    await this.expireOverdue();
+    const row = await this.findRow(id);
+    if (!row) {
+      throw new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
+    }
+    this.assertOwner(row.userId, userId);
+    return this.presentRow(row);
+  }
+
+  async list(userId: string) {
+    await this.expireOverdue();
     const db = getDb();
-    const [detail] = await db
+    const rows = await db
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(eq(reservations.userId, userId))
+      .orderBy(desc(reservations.startTime));
+
+    const items = await this.presentMany(rows.map((row) => row.id));
+    return { items };
+  }
+
+  async cancel(userId: string, id: string) {
+    await this.expireOverdue();
+    const row = await this.findRow(id);
+    if (!row) {
+      throw new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
+    }
+    this.assertOwner(row.userId, userId);
+
+    if (this.effectiveStatus(row) !== 'Reserved') {
+      throw new ApiError(
+        HttpStatus.CONFLICT,
+        'CANNOT_CANCEL',
+        'Only a reserved booking can be cancelled',
+      );
+    }
+
+    const db = getDb();
+    const [updated] = await db
+      .update(reservations)
+      .set({ status: 'Cancelled', updatedAt: new Date() })
+      .where(and(eq(reservations.id, id), eq(reservations.status, 'Reserved')))
+      .returning();
+
+    if (!updated) {
+      throw new ApiError(
+        HttpStatus.CONFLICT,
+        'CANNOT_CANCEL',
+        'Only a reserved booking can be cancelled',
+      );
+    }
+
+    return this.presentRow(updated);
+  }
+
+  private assertOwner(ownerId: string, userId: string) {
+    if (ownerId !== userId) {
+      throw new ApiError(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'You do not have access to this reservation',
+      );
+    }
+  }
+
+  private effectiveStatus(
+    row: { status: string; noShowDeadline: Date },
+    at = new Date(),
+  ) {
+    if (row.status === 'Reserved' && row.noShowDeadline < at) {
+      return 'Expired';
+    }
+    return row.status;
+  }
+
+  private async expireOverdue() {
+    const db = getDb();
+    await db
+      .update(reservations)
+      .set({ status: 'Expired', updatedAt: new Date() })
+      .where(
+        and(
+          eq(reservations.status, 'Reserved'),
+          lt(reservations.noShowDeadline, new Date()),
+        ),
+      );
+  }
+
+  private async findRow(id: string): Promise<ReservationRecord | undefined> {
+    const db = getDb();
+    const [row] = await db.select().from(reservations).where(eq(reservations.id, id));
+    return row;
+  }
+
+  private async present(row: CreatedRow) {
+    const [item] = await this.presentMany([row.id]);
+    return item;
+  }
+
+  private async presentRow(row: ReservationRecord) {
+    const [item] = await this.presentMany([row.id]);
+    return item;
+  }
+
+  private async presentMany(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const db = getDb();
+    const details = await db
       .select({
+        id: reservations.id,
+        reservationNumber: reservations.reservationNumber,
+        startTime: reservations.startTime,
+        endTime: reservations.endTime,
+        noShowDeadline: reservations.noShowDeadline,
+        status: reservations.status,
+        unitPrice: reservations.unitPrice,
+        durationHours: reservations.durationHours,
+        totalPrice: reservations.totalPrice,
         stationId: lockerStations.id,
         stationName: lockerStations.name,
         address: lockerStations.address,
@@ -60,23 +198,31 @@ export class ReservationsService {
       .from(reservations)
       .innerJoin(compartments, eq(reservations.compartmentId, compartments.id))
       .innerJoin(lockerStations, eq(compartments.stationId, lockerStations.id))
-      .where(eq(reservations.id, row.id));
+      .where(inArray(reservations.id, ids));
 
+    const byId = new Map(details.map((row) => [row.id, row]));
+    return ids.map((id) => this.toResponse(byId.get(id)!));
+  }
+
+  private toResponse(row: ReservationDetail) {
     return {
       id: row.id,
-      reservation_number: row.reservation_number,
-      station_id: detail.stationId,
-      station_name: detail.stationName,
-      address: detail.address,
-      size: detail.size,
-      compartment_label: detail.label,
-      start_time: new Date(row.start_time).toISOString(),
-      end_time: new Date(row.end_time).toISOString(),
-      no_show_deadline: new Date(row.no_show_deadline).toISOString(),
-      status: row.status,
-      unit_price: Number(row.unit_price),
-      duration_hours: row.duration_hours,
-      total_price: Number(row.total_price),
+      reservation_number: row.reservationNumber,
+      station_id: row.stationId,
+      station_name: row.stationName,
+      address: row.address,
+      size: row.size,
+      compartment_label: row.label,
+      start_time: new Date(row.startTime).toISOString(),
+      end_time: new Date(row.endTime).toISOString(),
+      no_show_deadline: new Date(row.noShowDeadline).toISOString(),
+      status: this.effectiveStatus({
+        status: row.status,
+        noShowDeadline: row.noShowDeadline,
+      }),
+      unit_price: Number(row.unitPrice),
+      duration_hours: row.durationHours,
+      total_price: Number(row.totalPrice),
     };
   }
 

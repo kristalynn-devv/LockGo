@@ -1,4 +1,14 @@
-import { Body, Controller, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthGuard, type AuthUser } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateReservationDto } from './dto/create-reservation.dto';
@@ -14,5 +24,26 @@ export class ReservationsController {
   @UseInterceptors(IdempotencyInterceptor)
   create(@CurrentUser() user: AuthUser, @Body() body: CreateReservationDto) {
     return this.reservations.create(user.id, body);
+  }
+
+  @Get()
+  list(@CurrentUser() user: AuthUser) {
+    return this.reservations.list(user.id);
+  }
+
+  @Get(':id')
+  getById(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.reservations.getById(user.id, id);
+  }
+
+  @Patch(':id/cancel')
+  cancel(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.reservations.cancel(user.id, id);
   }
 }
