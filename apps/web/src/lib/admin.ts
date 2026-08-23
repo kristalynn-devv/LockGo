@@ -7,7 +7,7 @@ export function useIsAdmin() {
   const token = session?.access_token
 
   const query = useQuery({
-    queryKey: ['me'],
+    queryKey: ['me', token],
     queryFn: () => getMe(token!),
     enabled: Boolean(token),
     staleTime: 5 * 60_000,

@@ -41,7 +41,7 @@ export function AdminPaymentsPage() {
   }
 
   const payments = useQuery({
-    queryKey: ['admin', 'payments', method, page],
+    queryKey: ['admin', 'payments', method, page, token],
     queryFn: () =>
       listAdminPayments(token, {
         method: method || undefined,

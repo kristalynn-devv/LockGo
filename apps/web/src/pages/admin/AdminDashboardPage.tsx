@@ -19,7 +19,7 @@ export function AdminDashboardPage() {
   const token = session?.access_token ?? ''
 
   const summary = useQuery({
-    queryKey: ['admin', 'summary'],
+    queryKey: ['admin', 'summary', token],
     queryFn: () => getAdminSummary(token),
     enabled: Boolean(token),
   })

@@ -4,7 +4,7 @@ import { isAwaitingPayment, isLockerReady, type Reservation } from './types'
 
 export function useReservationList(token: string) {
   return useQuery({
-    queryKey: ['reservations', 'list'],
+    queryKey: ['reservations', 'list', token],
     queryFn: () => listReservations(token),
     enabled: Boolean(token),
   })

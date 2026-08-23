@@ -44,7 +44,7 @@ export function AdminReservationsPage() {
   }
 
   const reservations = useQuery({
-    queryKey: ['admin', 'reservations', status, page],
+    queryKey: ['admin', 'reservations', status, page, token],
     queryFn: () =>
       listAdminReservations(token, {
         status: status || undefined,

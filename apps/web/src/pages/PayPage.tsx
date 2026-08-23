@@ -79,12 +79,15 @@ export function PayPage() {
     mutationFn: () => payReservation(token, id, method),
     onSuccess: (updated) => {
       queryClient.setQueryData(['reservations', updated.id], updated)
-      queryClient.setQueryData<{ items: Reservation[] }>(['reservations', 'list'], (current) => {
-        if (!current) return current
-        return {
-          items: current.items.map((row) => (row.id === updated.id ? updated : row)),
-        }
-      })
+      queryClient.setQueriesData<{ items: Reservation[] }>(
+        { queryKey: ['reservations', 'list'] },
+        (current) => {
+          if (!current) return current
+          return {
+            items: current.items.map((row) => (row.id === updated.id ? updated : row)),
+          }
+        },
+      )
       void queryClient.invalidateQueries({ queryKey: ['reservations'] })
       navigate(`/reservations/${updated.id}`, { replace: true })
     },

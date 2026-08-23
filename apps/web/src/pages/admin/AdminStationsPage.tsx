@@ -40,7 +40,7 @@ export function AdminStationsPage() {
   }
 
   const stations = useQuery({
-    queryKey: ['admin', 'stations', status],
+    queryKey: ['admin', 'stations', status, token],
     queryFn: () => listAdminStations(token, { status: status || undefined }),
     enabled: Boolean(token),
   })
