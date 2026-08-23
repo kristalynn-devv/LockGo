@@ -117,8 +117,9 @@ export function HistoryPage() {
           {items.map((item) => (
             <article key={item.id} className={`${cardClass} min-w-0 p-4`}>
               <div>
-                <p className="text-base font-semibold tabular-nums">
+                <p className="text-base font-semibold tabular-nums flex items-center justify-between">
                   {item.reservation_number}
+                  <Badge tone={statusTone(item.status)}>{item.status}</Badge>
                 </p>
                 <p className="text-sm text-ink-muted">
                   {item.size} · {item.compartment_label}
@@ -136,13 +137,12 @@ export function HistoryPage() {
 
               <div className="mt-3 flex items-center justify-between gap-3">
                 <p className="text-xl font-bold tabular-nums">{money(item.total_price)}</p>
-                <Badge tone={statusTone(item.status)}>{item.status}</Badge>
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="mt-3 flex items-center justify-between">
                 <Link
                   to={`/reservations/${item.id}`}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-ctl px-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-soft"
+                  className="inline-flex min-h-10 border border-accent-soft items-center rounded-ctl px-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-soft"
                 >
                   รายละเอียด
                 </Link>
