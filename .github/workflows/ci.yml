@@ -69,7 +69,7 @@ jobs:
       - name: seed
         run: pnpm db:seed
       - name: api e2e tests
-        run: pnpm --filter @lockgo/api test:e2e -- --runInBand
+        run: pnpm --filter @lockgo/api test:e2e
 
       - name: stack logs on failure
         if: failure()
