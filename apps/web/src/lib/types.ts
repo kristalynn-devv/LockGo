@@ -54,10 +54,13 @@ export type Reservation = {
   total_price: number
 }
 
+export type LockerSort = 'nearest' | 'price' | 'available'
+
 export type LockerFilters = {
   location: string
   distance: string
   size: string
   price: string
   availableOnly: boolean
+  sort: LockerSort
 }

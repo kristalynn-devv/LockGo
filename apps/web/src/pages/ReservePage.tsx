@@ -19,7 +19,6 @@ import { Icon } from '../ui/icons'
 import {
   ActionBar,
   cardClass,
-  fieldClass,
   labelClass,
   linkButtonClass,
   Page,
@@ -28,10 +27,22 @@ import {
   splitGridClass,
   SplitLayout,
 } from '../ui/Page'
-import { ErrorState, NoticeCard, Skeleton } from '../ui/states'
+import { DateField } from '../ui/DateField'
+import { MenuSelect } from '../ui/MenuSelect'
+import { ErrorState, FormError, NoticeCard, Skeleton } from '../ui/states'
 
 function isSize(value: string | null): value is Size {
   return value === 'Small' || value === 'Medium' || value === 'Large'
+}
+
+function hourOptions(date: string) {
+  const today = toDateInput(new Date())
+  const minHour = date === today ? nextHour().getHours() : 0
+  return Array.from({ length: Math.max(24 - minHour, 0) }, (_, index) => {
+    const hour = minHour + index
+    const value = `${String(hour).padStart(2, '0')}:00`
+    return { value, label: value }
+  })
 }
 
 export function ReservePage() {
@@ -190,50 +201,51 @@ export function ReservePage() {
               <div className="mt-2.5 grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className="block min-w-0">
                   <span className={labelClass}>วันที่</span>
-                  <input
-                    className={`${fieldClass} mt-1.5`}
-                    type="date"
-                    min={minDate}
-                    max={maxDate}
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                  />
+                  <div className="mt-1.5">
+                    <DateField
+                      value={date}
+                      min={minDate}
+                      max={maxDate}
+                      onChange={(next) => {
+                        setDate(next)
+                        const hours = hourOptions(next)
+                        if (!hours.some((option) => option.value === time)) {
+                          setTime(hours[0]?.value ?? toTimeInput(nextHour()))
+                        }
+                      }}
+                    />
+                  </div>
                 </label>
                 <label className="block min-w-0">
                   <span className={labelClass}>เวลา</span>
-                  <input
-                    className={`${fieldClass} mt-1.5`}
-                    type="time"
-                    step={3600}
-                    value={time}
-                    onChange={(event) => setTime(event.target.value)}
-                  />
+                  <div className="mt-1.5">
+                    <MenuSelect
+                      variant="field"
+                      value={time}
+                      options={hourOptions(date)}
+                      onChange={setTime}
+                    />
+                  </div>
                 </label>
               </div>
 
               <label className="mt-3 block">
                 <span className={labelClass}>ระยะเวลา</span>
-                <div className="relative mt-1.5">
-                  <select
-                    className={`${fieldClass} cursor-pointer appearance-none pr-9`}
-                    value={duration}
-                    onChange={(event) => setDuration(Number(event.target.value))}
-                  >
-                    {Array.from({ length: 24 }, (_, index) => index + 1).map((hours) => (
-                      <option key={hours} value={hours}>
-                        {hours} ชม.
-                      </option>
-                    ))}
-                  </select>
-                  <Icon
-                    name="chevron"
-                    className="pointer-events-none absolute top-1/2 right-3 size-[15px] -translate-y-1/2 text-ink-faint"
+                <div className="mt-1.5">
+                  <MenuSelect
+                    variant="field"
+                    value={String(duration)}
+                    options={Array.from({ length: 24 }, (_, index) => ({
+                      value: String(index + 1),
+                      label: `${index + 1} ชม.`,
+                    }))}
+                    onChange={(next) => setDuration(Number(next))}
                   />
                 </div>
               </label>
             </section>
 
-            {formError ? <ErrorState message={formError} /> : null}
+            {formError ? <FormError message={formError} /> : null}
 
             {mutation.isError ? (
               conflict ? (

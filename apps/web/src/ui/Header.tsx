@@ -35,7 +35,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur-xl">
       <div
-        className={`mx-auto flex min-w-0 items-center justify-between gap-4 py-2.5 ${shellPadClass} ${shellWidthClass}`}
+        className={`mx-auto flex min-w-0 items-center justify-between gap-2 py-2.5 sm:gap-4 ${shellPadClass} ${shellWidthClass}`}
       >
         <Link
           to="/"

@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiRequestError, cancelReservation, listReservations } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { formatTimeRange, money, statusTone } from '../lib/format'
-import { Icon } from '../ui/icons'
-import { cardClass, cardGridClass, Page, secondaryButtonClass } from '../ui/Page'
-import { Badge, EmptyState, ErrorState, SkeletonList } from '../ui/states'
+import { cardClass, cardGridClass, linkButtonClass, Page, secondaryButtonClass } from '../ui/Page'
+import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
+
+const STATUS_FILTERS = [
+  { id: 'Reserved', label: 'จองอยู่' },
+  { id: 'Cancelled', label: 'ยกเลิกแล้ว' },
+  { id: 'Expired', label: 'หมดอายุ' },
+] as const
 
 export function HistoryPage() {
   const { session } = useAuth()
   const token = session?.access_token ?? ''
   const queryClient = useQueryClient()
+  const [status, setStatus] = useState('')
 
   const history = useQuery({
     queryKey: ['reservations', 'list'],
@@ -25,6 +32,14 @@ export function HistoryPage() {
       void queryClient.invalidateQueries({ queryKey: ['lockers'] })
     },
   })
+
+  const items = useMemo(() => {
+    const rows = history.data?.items ?? []
+    if (!status) {
+      return rows
+    }
+    return rows.filter((item) => item.status === status)
+  }, [history.data?.items, status])
 
   if (history.isLoading) {
     return (
@@ -46,10 +61,26 @@ export function HistoryPage() {
     )
   }
 
-  const items = history.data?.items ?? []
-
   return (
     <Page title="ประวัติการจอง" wide>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {STATUS_FILTERS.map((item) => (
+          <Chip
+            compact
+            key={item.id}
+            pressed={status === item.id}
+            onClick={() => setStatus((current) => (current === item.id ? '' : item.id))}
+          >
+            {item.label}
+          </Chip>
+        ))}
+        {status ? (
+          <button type="button" className={`${linkButtonClass} text-xs`} onClick={() => setStatus('')}>
+            ล้างตัวกรอง
+          </button>
+        ) : null}
+      </div>
+
       {cancel.isError ? (
         <div className="mb-3">
           <ErrorState
@@ -63,7 +94,12 @@ export function HistoryPage() {
       ) : null}
 
       {items.length === 0 ? (
-        <EmptyState message="ยังไม่มีประวัติการจอง" hint="เริ่มจากค้นหาตู้ใกล้ตัวได้เลย" />
+        <EmptyState
+          message={status ? 'ไม่พบรายการในสถานะนี้' : 'ยังไม่มีประวัติการจอง'}
+          hint={status ? 'ลองเลือกสถานะอื่น หรือล้างตัวกรอง' : 'เริ่มจากค้นหาตู้ใกล้ตัวได้เลย'}
+          actionLabel={status ? 'ล้างตัวกรอง' : undefined}
+          onAction={status ? () => setStatus('') : undefined}
+        />
       ) : (
         <div className={cardGridClass}>
           {items.map((item) => (

@@ -148,3 +148,51 @@ export function Badge({ children, tone }: { children: ReactNode; tone: string })
     </span>
   )
 }
+
+/** สวิตช์/ตัวกรองแบบชิป — ไม่ใช่ดรอปดาวน์ */
+export function Chip({
+  pressed,
+  onClick,
+  children,
+  compact,
+  switchRole,
+}: {
+  pressed: boolean
+  onClick: () => void
+  children: ReactNode
+  compact?: boolean
+  switchRole?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      role={switchRole ? 'switch' : undefined}
+      aria-checked={switchRole ? pressed : undefined}
+      aria-pressed={switchRole ? undefined : pressed}
+      onClick={onClick}
+      className={`rounded-full border ${
+        compact
+          ? 'inline-flex h-8 items-center px-2.5 text-xs'
+          : 'min-h-10 px-3 text-sm'
+      } ${
+        pressed
+          ? 'border-accent bg-accent-soft font-medium text-accent-text'
+          : `${compact ? 'border-line' : 'border-line-strong'} bg-surface text-ink-muted hover:bg-elevated`
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** ตรวจฟอร์ม — ไม่ใช้ ErrorState ที่เป็นการ์ดโหลดไม่สำเร็จ */
+export function FormError({ message }: { message: string }) {
+  return (
+    <p
+      className="rounded-lg border border-danger/40 bg-danger-soft/60 px-3 py-2 text-sm text-danger"
+      role="alert"
+    >
+      {message}
+    </p>
+  )
+}
