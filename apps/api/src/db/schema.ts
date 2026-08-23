@@ -37,6 +37,7 @@ export const customers = pgTable('customers', {
   id: uuid('id').primaryKey(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
+  status: text('status').notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -45,10 +46,12 @@ export const customers = pgTable('customers', {
     .defaultNow(),
 });
 
-/** พนักงาน — เพิ่มด้วยมือเท่านั้น ไม่มี self-serve signup; มีแถวในตารางนี้ = admin */
+/** พนักงาน — เพิ่มด้วยมือเท่านั้น ไม่มี self-serve signup; role เผื่อแบ่งสิทธิ์ในอนาคต */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   displayName: text('display_name'),
+  role: text('role').notNull().default('admin'),
+  status: text('status').notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

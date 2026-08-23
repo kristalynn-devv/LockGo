@@ -28,6 +28,7 @@ erDiagram
     uuid id PK_FK
     text display_name
     text avatar_url
+    text status
     timestamptz created_at
     timestamptz updated_at
   }
@@ -35,6 +36,8 @@ erDiagram
   USERS {
     uuid id PK_FK
     text display_name
+    text role
+    text status
     timestamptz created_at
   }
 
@@ -134,9 +137,16 @@ erDiagram
 หน้าแอดมิน (จัดการสถานี ดูการจองทั้งหมด ดูการชำระเงิน) ต้องเปิดเฉพาะพนักงาน ไม่ใช่ลูกค้าทุกคนที่ login ได้ จึงแยกเป็นตารางที่สอง แทนการเติม `role` column ใน `customers`:
 
 1. Signup ทุกคนลง `customers` อัตโนมัติเหมือนเดิม (ผ่าน `private.handle_new_user`) — ไม่มี self-serve staff signup
-2. เพิ่มพนักงานด้วย SQL มือเท่านั้น: `INSERT INTO public.users (id, display_name) SELECT id, display_name FROM public.customers WHERE display_name = '...'`
-3. **มีแถวใน `public.users` = admin** — `AdminGuard` เช็คแค่ว่ามีแถวหรือไม่ ไม่มี role column ให้ซับซ้อน (MVP)
+2. เพิ่มพนักงานด้วย SQL มือเท่านั้น: `INSERT INTO public.users (id, display_name) SELECT id, display_name FROM public.customers WHERE display_name = '...'` (`role` default เป็น `'admin'`)
+3. `users.role` เก็บสิทธิ์พนักงาน — ค่าที่ยอมรับตอนนี้มีแค่ `'admin'` (`CHECK` constraint) เผื่อในอนาคตมี role อื่น เช่น staff ที่ดูได้อย่างเดียว แก้ไม่ได้ — `AdminGuard` เช็ค `role = 'admin'` ไม่ใช่แค่ว่ามีแถวหรือไม่
 4. พนักงานยังมีแถวใน `customers` อยู่ด้วย (จาก trigger) แต่ `apps/web` กันไม่ให้ admin เห็นหน้าลูกค้า — `ProtectedLayout` เด้งไป `/admin` ถ้า `role = admin`, `AdminLayout` เด้งไป `/` ถ้าไม่ใช่
+
+## `status` — ปิดสิทธิ์โดยไม่ลบแถว
+
+ทั้ง `customers` และ `users` มีคอลัมน์ `status` (`'active'` / `'inactive'`, `CHECK` constraint, default `'active'`):
+
+- `users.status = 'inactive'` — `AdminGuard` เช็คคู่กับ `role`, พนักงานที่ถูกปิดจะโดน `403` ทันทีแม้ยังมีแถวอยู่
+- `customers.status` — มีคอลัมน์ไว้แล้ว **ยังไม่มีจุดไหนบังคับ** (`AuthGuard` ไม่แตะตาราง `customers` เลย) ต้องตัดสินใจก่อนว่าจะบล็อกทั้งแอป (เพิ่ม DB lookup ทุก request) หรือแค่ให้แอดมินเห็นสถานะในหน้าจัดการลูกค้า
 
 ## ข้อจำกัดที่ต้องอยู่ใน schema (ทำตอนบล็อก B)
 

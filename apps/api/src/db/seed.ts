@@ -420,8 +420,10 @@ async function seedScenarioReservations(sql: Sql) {
  * there is no self-serve staff signup, admins are added by hand). Her row in
  * public.customers is created by the `on_auth_user_created` trigger right
  * after upsertAuthUser signs her up, so display_name is already set by the
- * time this runs. If that trigger is ever missing, add her manually:
- *   INSERT INTO public.users (id, display_name) VALUES ('<carol-uuid-from-supabase>', 'Carol LockGo');
+ * time this runs. `role` defaults to 'admin' — kept as a column (not just
+ * row presence) so a future non-admin staff role has somewhere to live.
+ * If the trigger is ever missing, add her manually:
+ *   INSERT INTO public.users (id, display_name, role) VALUES ('<carol-uuid-from-supabase>', 'Carol LockGo', 'admin');
  */
 async function promoteToStaff(sql: Sql, displayName: string) {
   await sql`

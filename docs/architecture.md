@@ -108,9 +108,9 @@ path ไม่มี `/v1` และไม่ใช้คำว่า bookings (
 
 ## หน้าแอดมิน (staff) แยกจากลูกค้า
 
-`public.users` (พนักงาน) แยกจาก `public.customers` (ลูกค้า) — ดูเหตุผลเต็มใน [erd.md](./erd.md#ทำไม-users-พนักงาน-แยกจาก-customers) มีแถวใน `public.users` เท่ากับ admin ไม่มี role column
+`public.users` (พนักงาน) แยกจาก `public.customers` (ลูกค้า) — ดูเหตุผลเต็มใน [erd.md](./erd.md#ทำไม-users-พนักงาน-แยกจาก-customers) `users.role` เก็บสิทธิ์พนักงาน ตอนนี้ยอมรับแค่ `'admin'` (`CHECK` constraint) เผื่อเพิ่ม role อื่นในอนาคต
 
-`AdminGuard` เช็คว่า `request.user.id` (จาก JWT) มีแถวใน `public.users` หรือไม่ — ถ้าไม่มีคืน `403 FORBIDDEN` ใช้คู่กับ `AuthGuard` เสมอ (`@UseGuards(AuthGuard, AdminGuard)`)
+`AdminGuard` เช็คว่า `request.user.id` (จาก JWT) มีแถวใน `public.users` ที่ `role = 'admin'` หรือไม่ — ถ้าไม่ใช่คืน `403 FORBIDDEN` ใช้คู่กับ `AuthGuard` เสมอ (`@UseGuards(AuthGuard, AdminGuard)`)
 
 ฝั่ง `apps/web` แยกสอง route tree ด้วย `useIsAdmin()` (เรียก `GET /api/me`):
 

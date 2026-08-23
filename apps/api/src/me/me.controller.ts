@@ -20,13 +20,13 @@ export class MeController {
         .select({ displayName: customers.displayName })
         .from(customers)
         .where(eq(customers.id, user.id)),
-      db.select({ id: users.id }).from(users).where(eq(users.id, user.id)),
+      db.select({ role: users.role }).from(users).where(eq(users.id, user.id)),
     ]);
 
     return {
       id: user.id,
       email: user.email ?? null,
-      role: staffRow[0] ? 'admin' : 'user',
+      role: staffRow[0]?.role ?? 'user',
       display_name: customerRow[0]?.displayName ?? null,
     };
   }

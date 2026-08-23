@@ -28,11 +28,11 @@ export class AdminGuard implements CanActivate {
 
     const db = getDb();
     const [row] = await db
-      .select({ id: users.id })
+      .select({ role: users.role, status: users.status })
       .from(users)
       .where(eq(users.id, user.id));
 
-    if (!row) {
+    if (!row || row.role !== 'admin' || row.status !== 'active') {
       throw new ApiError(
         HttpStatus.FORBIDDEN,
         'FORBIDDEN',

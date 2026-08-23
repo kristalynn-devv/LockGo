@@ -58,8 +58,40 @@ describe('AdminGuard', () => {
     }
   });
 
-  it('allows a user present in the staff table', async () => {
-    whereMock.mockResolvedValue([{ id: 'carol' }]);
+  it('rejects a staff row whose role is not admin', async () => {
+    whereMock.mockResolvedValue([{ role: 'support', status: 'active' }]);
+    const guard = new AdminGuard();
+
+    try {
+      await guard.canActivate(httpContext({ id: 'dave' }));
+      throw new Error('expected FORBIDDEN');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).getStatus()).toBe(HttpStatus.FORBIDDEN);
+      expect((error as ApiError).getResponse()).toMatchObject({
+        code: 'FORBIDDEN',
+      });
+    }
+  });
+
+  it('rejects an admin whose status is inactive', async () => {
+    whereMock.mockResolvedValue([{ role: 'admin', status: 'inactive' }]);
+    const guard = new AdminGuard();
+
+    try {
+      await guard.canActivate(httpContext({ id: 'carol' }));
+      throw new Error('expected FORBIDDEN');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).getStatus()).toBe(HttpStatus.FORBIDDEN);
+      expect((error as ApiError).getResponse()).toMatchObject({
+        code: 'FORBIDDEN',
+      });
+    }
+  });
+
+  it('allows an active staff row with role admin', async () => {
+    whereMock.mockResolvedValue([{ role: 'admin', status: 'active' }]);
     const guard = new AdminGuard();
 
     await expect(
