@@ -69,7 +69,7 @@ export function LoginPage() {
             แล้วจองไว้ล่วงหน้า
           </h2>
           <ul className="mt-7 grid gap-3">
-            {POINTS.map((point, index) => (
+            {POINTS.map((point) => (
               <li key={point} className="flex items-start gap-2.5 text-sm opacity-90">
                 <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/15 text-[11px] font-bold" />
                 {point}
