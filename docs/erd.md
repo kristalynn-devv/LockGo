@@ -3,18 +3,19 @@
 แหล่งอ้างอิง: [requirements.md](./requirements.md) §17 · §25 (T-02, S-04, S-05, S-06, C-03, C-09)
 
 Assessment บังคับอย่างน้อย 4 entity: User · Locker · Compartment · Reservation  
-รอบนี้เพิ่ม `station_pricing` (เรทรายสถานี) `idempotency_keys` (กันกด Confirm ซ้ำ) และ `payments` (transaction หลังกรอกฟอร์มชำระ)
+รอบนี้เพิ่ม `station_pricing` (เรทรายสถานี) `idempotency_keys` (กันกด Confirm ซ้ำ) `payments` (transaction หลังกรอกฟอร์มชำระ) และแยก `users` เดิมเป็น `customers` (ลูกค้าทั้งหมด) กับ `users` ใหม่ (พนักงาน/แอดมิน) เพื่อรองรับหน้าแอดมิน
 
 ```mermaid
 erDiagram
-  AUTH_USERS ||--|| USERS : "1:1 sync trigger"
-  USERS ||--o{ RESERVATIONS : "owns"
+  AUTH_USERS ||--|| CUSTOMERS : "1:1 sync trigger"
+  AUTH_USERS ||--o| USERS : "staff, added by hand"
+  CUSTOMERS ||--o{ RESERVATIONS : "owns"
   LOCKER_STATIONS ||--|{ COMPARTMENTS : "has"
   LOCKER_STATIONS ||--|{ STATION_PRICING : "rates"
   COMPARTMENTS ||--o{ RESERVATIONS : "booked as"
-  USERS ||--o{ IDEMPOTENCY_KEYS : "confirm keys"
+  CUSTOMERS ||--o{ IDEMPOTENCY_KEYS : "confirm keys"
   RESERVATIONS ||--o| IDEMPOTENCY_KEYS : "first success"
-  USERS ||--o{ PAYMENTS : "pays"
+  CUSTOMERS ||--o{ PAYMENTS : "pays"
   RESERVATIONS ||--o| PAYMENTS : "one paid txn"
 
   AUTH_USERS {
@@ -23,12 +24,18 @@ erDiagram
     jsonb raw_user_meta_data
   }
 
-  USERS {
+  CUSTOMERS {
     uuid id PK_FK
     text display_name
     text avatar_url
     timestamptz created_at
     timestamptz updated_at
+  }
+
+  USERS {
+    uuid id PK_FK
+    text display_name
+    timestamptz created_at
   }
 
   LOCKER_STATIONS {
@@ -97,29 +104,39 @@ erDiagram
 
 | จาก | ไป | แบบ | ทำไม |
 |-----|-----|-----|------|
-| `auth.users` | `public.users` | 1:1 | โปรไฟล์ที่แอปอ่าน/เขียน อยู่ฝั่งเรา Auth อยู่ฝั่ง Supabase — S-06 |
+| `auth.users` | `public.customers` | 1:1 | โปรไฟล์ลูกค้าที่แอปอ่าน/เขียน อยู่ฝั่งเรา Auth อยู่ฝั่ง Supabase — S-06 |
+| `auth.users` | `public.users` | 1:0..1 | พนักงาน — เพิ่มด้วยมือเท่านั้น ไม่มี trigger auto-insert |
 | `locker_stations` | `compartments` | 1:N | ตู้หนึ่งมีหลายช่อง ขนาดคนละแบบ — T-02 |
 | `locker_stations` | `station_pricing` | 1:N ตามขนาด | เรทไม่รวมในตู้ เพราะแต่ละสถานีตั้งคนละราคา |
 | `compartments` | `reservations` | 1:N | จองผูกช่องเจาะจง ไม่ใช่โควตาต่อขนาด — C-01 · P-02 |
-| `users` | `reservations` | 1:N | ประวัติและสิทธิ์เจ้าของ — C-04 · BR-09 |
-| `users` + key | `idempotency_keys` | 1:N | คนละปัญหากับจองซ้อน — S-05 |
+| `customers` | `reservations` | 1:N | ประวัติและสิทธิ์เจ้าของ — C-04 · BR-09 |
+| `customers` + key | `idempotency_keys` | 1:N | คนละปัญหากับจองซ้อน — S-05 |
 | `reservations` | `payments` | 1:0..1 | ชำระสำเร็จหนึ่งใบหนึ่งแถว — P-01 |
 
 `AUTH_USERS` ในภาพคือตารางของ Supabase ไม่สร้างเอง
 
-## ทำไม user แยกสองตาราง (S-06)
+## ทำไม customer แยกจาก auth.users (S-06)
 
 `auth.users` เป็นของ Auth — เก็บ credential, identity, session  
-`public.users` เป็นของโดเมน LockGo — เก็บชื่อ รูป และเป็น FK ของการจอง
+`public.customers` เป็นของโดเมน LockGo — เก็บชื่อ รูป และเป็น FK ของการจอง
 
 แยกเพราะ:
 
 1. Nest อ่าน/เขียนโปรไฟล์ผ่าน schema ของเรา โดยไม่ให้ web แตะ Auth schema
 2. Trigger คัดลอก `display_name` / `avatar_url` จาก metadata ตอนสมัคร แอปไม่ต้องสร้างแถวโปรไฟล์เอง
 3. ลบหรือย้ายผู้ใช้ฝั่ง Auth ไม่ทำให้ FK การจองชี้ตารางที่แอปไม่ควรถือ
-4. RLS และสิทธิ์เจ้าของผูก `public.users.id` ซึ่งเท่ากับ `auth.uid()`
+4. RLS และสิทธิ์เจ้าของผูก `public.customers.id` ซึ่งเท่ากับ `auth.uid()`
 
 ห้ามใช้ `user_metadata` ใน JWT เป็นแหล่งตัดสินสิทธิ์ — metadata ผู้ใช้แก้ได้
+
+## ทำไม `users` (พนักงาน) แยกจาก `customers`
+
+หน้าแอดมิน (จัดการสถานี ดูการจองทั้งหมด ดูการชำระเงิน) ต้องเปิดเฉพาะพนักงาน ไม่ใช่ลูกค้าทุกคนที่ login ได้ จึงแยกเป็นตารางที่สอง แทนการเติม `role` column ใน `customers`:
+
+1. Signup ทุกคนลง `customers` อัตโนมัติเหมือนเดิม (ผ่าน `private.handle_new_user`) — ไม่มี self-serve staff signup
+2. เพิ่มพนักงานด้วย SQL มือเท่านั้น: `INSERT INTO public.users (id, display_name) SELECT id, display_name FROM public.customers WHERE display_name = '...'`
+3. **มีแถวใน `public.users` = admin** — `AdminGuard` เช็คแค่ว่ามีแถวหรือไม่ ไม่มี role column ให้ซับซ้อน (MVP)
+4. พนักงานยังมีแถวใน `customers` อยู่ด้วย (จาก trigger) แต่ `apps/web` กันไม่ให้ admin เห็นหน้าลูกค้า — `ProtectedLayout` เด้งไป `/admin` ถ้า `role = admin`, `AdminLayout` เด้งไป `/` ถ้าไม่ใช่
 
 ## ข้อจำกัดที่ต้องอยู่ใน schema (ทำตอนบล็อก B)
 

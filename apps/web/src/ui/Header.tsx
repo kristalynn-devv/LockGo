@@ -38,7 +38,7 @@ function initials(email?: string | null) {
   return email.slice(0, 2).toUpperCase()
 }
 
-function ThemeButton() {
+export function ThemeButton() {
   const { resolved, toggle } = useTheme()
   return (
     <button

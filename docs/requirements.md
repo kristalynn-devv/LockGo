@@ -429,7 +429,7 @@ total = max(rate_per_hour × duration_hours, 30)
 | S-03 | Realtime ใช้เป็นสัญญาณ invalidate cache | subscribe แล้วเรียก `invalidateQueries` |
 | S-04 | กันจองซ้อนสองชั้น — `FOR UPDATE` + `EXCLUDE USING gist` | migration สร้างทั้งฟังก์ชันและ constraint |
 | S-05 | ปุ่ม disabled + idempotency key | ตาราง `idempotency_keys` + interceptor · ห้ามใช้ unique บน `(user_id, compartment_id, start_time)` เพราะยกเลิกแล้วจองใหม่ได้ |
-| S-06 | `public.users` อ้าง `auth.users` + trigger sync | เขียนเหตุผลที่แยกสองตารางลง ERD |
+| S-06 | `public.customers` อ้าง `auth.users` + trigger sync | เขียนเหตุผลที่แยกสองตารางลง ERD |
 | S-07 | Google OAuth คู่กับ email/password | `redirectTo` จาก env · บัญชีทดสอบใน README |
 | S-08 | Drizzle ถือ schema · SQL มือถือ constraint | ห้ามใช้ `drizzle-kit push` · `db:migrate` รันสองชุดตามลำดับ |
 

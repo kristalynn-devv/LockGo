@@ -1,5 +1,17 @@
 import { env } from './env'
-import type { LockerDetail, LockerListItem, LocationItem, Reservation } from './types'
+import type {
+  AdminReservation,
+  AdminStation,
+  AdminStationListItem,
+  AdminSummary,
+  LockerDetail,
+  LockerListItem,
+  LocationItem,
+  Me,
+  Payment,
+  Reservation,
+  Size,
+} from './types'
 
 export class ApiRequestError extends Error {
   status: number
@@ -25,6 +37,8 @@ const MESSAGES: Record<string, string> = {
   CANNOT_PICKUP: 'รับของได้เฉพาะตอนที่ของอยู่ในช่องแล้ว',
   NOT_FOUND: 'ไม่พบข้อมูลที่ต้องการ',
   IDEMPOTENCY_KEY_REQUIRED: 'ไม่สามารถส่งคำขอได้ กรุณาลองใหม่',
+  FORBIDDEN: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้',
+  DUPLICATE_LABEL: 'มีช่องล็อกเกอร์ชื่อนี้ในสถานีนี้แล้ว',
 }
 
 function friendlyMessage(code?: string): string {
@@ -63,6 +77,16 @@ async function request<T>(
     )
   }
   return data as T
+}
+
+function toQueryString(query: Record<string, string | undefined>): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value) {
+      params.set(key, value)
+    }
+  }
+  return params.size ? `?${params}` : ''
 }
 
 export function listLocations(token: string) {
@@ -140,4 +164,89 @@ export function pickupReservation(token: string, id: string) {
     token,
     method: 'PATCH',
   })
+}
+
+export function getMe(token: string) {
+  return request<Me>('/me', { token })
+}
+
+export function listAdminStations(
+  token: string,
+  query: Record<string, string | undefined>,
+) {
+  return request<{ items: AdminStationListItem[]; page: number; limit: number; total: number }>(
+    `/admin/stations${toQueryString(query)}`,
+    { token },
+  )
+}
+
+export function getAdminStation(token: string, id: string) {
+  return request<AdminStation>(`/admin/stations/${id}`, { token })
+}
+
+export function createAdminStation(
+  token: string,
+  body: { name: string; address: string; latitude: number; longitude: number; status?: string },
+) {
+  return request<AdminStation>('/admin/stations', { token, method: 'POST', body })
+}
+
+export function updateAdminStation(
+  token: string,
+  id: string,
+  body: Partial<{
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    status: string
+  }>,
+) {
+  return request<AdminStation>(`/admin/stations/${id}`, { token, method: 'PATCH', body })
+}
+
+export function createAdminCompartment(
+  token: string,
+  stationId: string,
+  body: { size: Size; label: string },
+) {
+  return request<AdminStation>(`/admin/stations/${stationId}/compartments`, {
+    token,
+    method: 'POST',
+    body,
+  })
+}
+
+export function upsertAdminStationPricing(
+  token: string,
+  stationId: string,
+  size: Size,
+  ratePerHour: number,
+) {
+  return request<AdminStation>(`/admin/stations/${stationId}/pricing/${size}`, {
+    token,
+    method: 'PUT',
+    body: { rate_per_hour: ratePerHour },
+  })
+}
+
+export function listAdminReservations(
+  token: string,
+  query: Record<string, string | undefined>,
+) {
+  return request<{ items: AdminReservation[]; page: number; limit: number }>(
+    `/admin/reservations${toQueryString(query)}`,
+    { token },
+  )
+}
+
+export function listAdminPayments(token: string, query: Record<string, string | undefined>) {
+  return request<{ items: Payment[]; page: number; limit: number }>(
+    `/admin/payments${toQueryString(query)}`,
+    { token },
+  )
+}
+
+export function getAdminSummary(token: string) {
+  return request<AdminSummary>('/admin/summary', { token })
 }

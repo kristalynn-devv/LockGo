@@ -100,9 +100,24 @@ sequenceDiagram
 | Auth | `auth/auth.guard.ts` | ตรวจ JWT ด้วย `SUPABASE_JWT_SECRET` — ไม่แยก Nest module |
 | Lockers | `LockersModule` | `GET /api/lockers` · `/locations` · `/{id}` |
 | Reservations | `ReservationsModule` | สร้าง ดู ประวัติ ยกเลิก ชำระ ฝาก รับ · ชำระเรียก `pay_lockgo_reservation` + idempotency interceptor |
+| Me | `MeModule` | `GET /api/me` — คืน role (`admin` ถ้ามีแถวใน `public.users`, ไม่งั้น `user`) ให้ `apps/web` ตัดสินใจ route |
+| Admin | `AdminModule` | `admin/{stations,reservations,payments,summary}` — จัดการสถานี ดูการจอง/การชำระเงินข้ามลูกค้า สรุปแดชบอร์ด · ทุก route ผ่าน `AuthGuard` + `AdminGuard` |
 | Pricing | ใน service ของ lockers / reservations | `max(rate × hours, 30)` |
 
 path ไม่มี `/v1` และไม่ใช้คำว่า bookings (`T-01`)
+
+## หน้าแอดมิน (staff) แยกจากลูกค้า
+
+`public.users` (พนักงาน) แยกจาก `public.customers` (ลูกค้า) — ดูเหตุผลเต็มใน [erd.md](./erd.md#ทำไม-users-พนักงาน-แยกจาก-customers) มีแถวใน `public.users` เท่ากับ admin ไม่มี role column
+
+`AdminGuard` เช็คว่า `request.user.id` (จาก JWT) มีแถวใน `public.users` หรือไม่ — ถ้าไม่มีคืน `403 FORBIDDEN` ใช้คู่กับ `AuthGuard` เสมอ (`@UseGuards(AuthGuard, AdminGuard)`)
+
+ฝั่ง `apps/web` แยกสอง route tree ด้วย `useIsAdmin()` (เรียก `GET /api/me`):
+
+- `ProtectedLayout` (หน้าลูกค้า) — เด้งไป `/admin` ถ้า role เป็น `admin`
+- `AdminLayout` (หน้าแอดมิน) — เด้งไป `/` ถ้า role ไม่ใช่ `admin`
+
+แอดมินกับลูกค้าจึงไม่เห็นหน้ากันข้ามฝั่งเลย ไม่มีลิงก์สลับไปมา
 
 ## Deploy ในอนาคต
 

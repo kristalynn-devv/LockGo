@@ -12,6 +12,11 @@ const TEST_USERS = [
     password: 'LockGo-Bob-1',
     name: 'Bob LockGo',
   },
+  {
+    email: 'carol.lockgo@example.com',
+    password: 'LockGo-Carol-1',
+    name: 'Carol LockGo',
+  },
 ] as const;
 
 const STATIONS = [
@@ -148,9 +153,9 @@ async function upsertAuthUser(user: (typeof TEST_USERS)[number]) {
 
 type Sql = ReturnType<typeof postgres>;
 
-async function userIdByName(sql: Sql, name: string) {
+async function customerIdByName(sql: Sql, name: string) {
   const rows = await sql<{ id: string }[]>`
-    SELECT id FROM public.users WHERE display_name = ${name} LIMIT 1
+    SELECT id FROM public.customers WHERE display_name = ${name} LIMIT 1
   `;
   return rows[0]?.id;
 }
@@ -180,8 +185,8 @@ async function compartmentId(
 }
 
 async function seedScenarioReservations(sql: Sql) {
-  const aliceId = await userIdByName(sql, 'Alice LockGo');
-  const bobId = await userIdByName(sql, 'Bob LockGo');
+  const aliceId = await customerIdByName(sql, 'Alice LockGo');
+  const bobId = await customerIdByName(sql, 'Bob LockGo');
   const centralId = await stationIdByName(sql, 'Central Station');
   const moChitId = await stationIdByName(sql, 'Mo Chit');
   const stadiumId = await stationIdByName(sql, 'National Stadium');
@@ -409,6 +414,23 @@ async function seedScenarioReservations(sql: Sql) {
   return 6;
 }
 
+/**
+ * Carol is added to the staff `public.users` table for local dev/testing of
+ * the admin area; Alice and Bob stay plain customers (public.customers only —
+ * there is no self-serve staff signup, admins are added by hand). Her row in
+ * public.customers is created by the `on_auth_user_created` trigger right
+ * after upsertAuthUser signs her up, so display_name is already set by the
+ * time this runs. If that trigger is ever missing, add her manually:
+ *   INSERT INTO public.users (id, display_name) VALUES ('<carol-uuid-from-supabase>', 'Carol LockGo');
+ */
+async function promoteToStaff(sql: Sql, displayName: string) {
+  await sql`
+    INSERT INTO public.users (id, display_name)
+    SELECT id, display_name FROM public.customers WHERE display_name = ${displayName}
+    ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name
+  `;
+}
+
 async function main() {
   for (const user of TEST_USERS) {
     await upsertAuthUser(user);
@@ -465,15 +487,19 @@ async function main() {
     }
   }
 
+  await promoteToStaff(sql, 'Carol LockGo');
+
   const scenarios = await seedScenarioReservations(sql);
 
-  const userCount = await sql`SELECT count(*)::int AS n FROM public.users`;
+  const customerCount =
+    await sql`SELECT count(*)::int AS n FROM public.customers`;
+  const staffCount = await sql`SELECT count(*)::int AS n FROM public.users`;
   const stationCount =
     await sql`SELECT count(*)::int AS n FROM public.locker_stations`;
   await sql.end();
 
   console.log(
-    `seed ok — users=${userCount[0].n} stations=${stationCount[0].n} scenarios=${scenarios}`,
+    `seed ok — customers=${customerCount[0].n} staff=${staffCount[0].n} stations=${stationCount[0].n} scenarios=${scenarios}`,
   );
 }
 

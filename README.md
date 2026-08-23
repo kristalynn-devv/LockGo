@@ -134,7 +134,7 @@ Windows: `setup.cmd` (ขั้น migrate + seed ทำอัตโนมัต
 | Drizzle | `apps/api/drizzle/` | ตารางหลัก (stations, compartments, reservations, …) |
 | SQL มือ | `supabase/migrations/` | auth sync, EXCLUDE กันจองซ้อน, RLS, `paid_at` + `payments`, RPC จอง/ชำระ |
 
-**seed เอาข้อมูลจากไหน?** hardcode ใน `apps/api/src/db/seed.ts` — สร้างบัญชี Alice/Bob ผ่าน Supabase Auth API และใส่สถานีตู้ 5 แห่งในกรุงเทพ
+**seed เอาข้อมูลจากไหน?** hardcode ใน `apps/api/src/db/seed.ts` — สร้างบัญชี Alice/Bob/Carol ผ่าน Supabase Auth API, ใส่สถานีตู้ 11 แห่งในกรุงเทพ, และเพิ่ม Carol ลงตาราง `public.users` (พนักงาน) ให้เป็น admin
 
 `db:migrate` รัน [`apps/api/src/db/run-migrations.ts`](./apps/api/src/db/run-migrations.ts) — Drizzle ก่อน แล้วตามด้วย SQL มือ **ห้ามใช้ `drizzle-kit push`**  
 ถ้ารันซ้ำบนฐานที่มีตารางแล้ว สคริปต์จะข้ามชุดที่ลงไปแล้ว ไม่ต้องลบโปรเจกต์ทิ้ง
@@ -151,8 +151,9 @@ npx supabase start
 
 | อีเมล | รหัสผ่าน | ใช้ทำอะไร |
 |-------|----------|-----------|
-| `alice.lockgo@example.com` | `LockGo-Alice-1` | ผู้ใช้หลัก เดิน journey จอง |
-| `bob.lockgo@example.com` | `LockGo-Bob-1` | คนที่สอง เทสต์ 403 และจองพร้อมกัน |
+| `alice.lockgo@example.com` | `LockGo-Alice-1` | ลูกค้าหลัก เดิน journey จอง |
+| `bob.lockgo@example.com` | `LockGo-Bob-1` | ลูกค้าคนที่สอง เทสต์ 403 และจองพร้อมกัน |
+| `carol.lockgo@example.com` | `LockGo-Carol-1` | พนักงาน — อยู่ในตาราง `public.users` มีสิทธิ์เข้า `/admin`, Alice/Bob เข้าไม่ได้ |
 
 หลัง `pnpm db:seed` มีตู้และใบจองสำหรับเดินเคส (รันซ้ำได้ ชุด `LK-SEED-*` จะถูกลบแล้วใส่ใหม่):
 
@@ -267,6 +268,19 @@ Swagger UI: http://localhost:3000/api/docs
 | PATCH | `/api/reservations/{id}/pay` | ฟอร์มส่ง `method` แล้วฟังก์ชันบน Supabase เขียน `payments` + `paid_at` |
 | PATCH | `/api/reservations/{id}/deposit` | เปิดตู้จำลองแล้วฝากของ — Reserved ที่จ่ายแล้ว → Active |
 | PATCH | `/api/reservations/{id}/pickup` | เปิดตู้จำลองแล้วรับของ — Active → Completed |
+| GET | `/api/me` | id/email/role ของ token นี้ — `role: "admin"` ถ้ามีแถวใน `public.users` |
+
+เส้นทางด้านล่างต้องเป็นพนักงาน (มีแถวใน `public.users`) ไม่งั้น `403 FORBIDDEN` — ดู [docs/architecture.md](./docs/architecture.md#หน้าแอดมิน-staff-แยกจากลูกค้า)
+
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| GET | `/api/admin/summary` | ตัวเลขสรุป: สถานีตามสถานะ, การจองที่ใช้งานวันนี้, รายได้วันนี้/เดือนนี้, การจองทั้งหมด |
+| GET, POST | `/api/admin/stations` | ดูรายการ / เพิ่มสถานี |
+| GET, PATCH | `/api/admin/stations/{id}` | รายละเอียด (รวมช่อง+ราคา) / แก้ไขสถานี |
+| POST | `/api/admin/stations/{id}/compartments` | เพิ่มช่องล็อกเกอร์ |
+| PUT | `/api/admin/stations/{id}/pricing/{size}` | ตั้ง/แก้ราคาต่อชั่วโมงตามขนาด |
+| GET | `/api/admin/reservations` | การจองของลูกค้าทุกคน กรองสถานะ/สถานี/ช่วงเวลาได้ |
+| GET | `/api/admin/payments` | ประวัติการชำระเงินของลูกค้าทุกคน |
 
 Error รูปเดียวทั้งระบบ: `{ statusCode, code, message }`
 

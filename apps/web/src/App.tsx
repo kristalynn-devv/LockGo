@@ -7,6 +7,7 @@ import {
   createBrowserRouter,
   useLocation,
 } from 'react-router-dom'
+import { useIsAdmin } from './lib/admin'
 import { AuthProvider, useAuth } from './lib/auth'
 import { RealtimeBridge } from './lib/realtime'
 import { ThemeProvider } from './lib/theme'
@@ -18,6 +19,12 @@ import { HistoryPage } from './pages/HistoryPage'
 import { LoginPage } from './pages/LoginPage'
 import { PayPage } from './pages/PayPage'
 import { ReservePage } from './pages/ReservePage'
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
+import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage'
+import { AdminReservationsPage } from './pages/admin/AdminReservationsPage'
+import { AdminStationDetailPage } from './pages/admin/AdminStationDetailPage'
+import { AdminStationsPage } from './pages/admin/AdminStationsPage'
+import { AdminHeader } from './ui/AdminHeader'
 import { Header, TabBar } from './ui/Header'
 import { IconSprite } from './ui/icons'
 import { FooterDock, FooterSlotProvider, Page } from './ui/Page'
@@ -42,8 +49,9 @@ function ScrollToTop() {
 
 function ProtectedLayout() {
   const { session, loading } = useAuth()
+  const { isAdmin, loading: adminLoading } = useIsAdmin()
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <Page wide>
         <SkeletonList count={4} />
@@ -55,6 +63,10 @@ function ProtectedLayout() {
     return <Navigate to="/login" replace />
   }
 
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />
+  }
+
   return (
     <FooterSlotProvider>
       <ScrollToTop />
@@ -64,6 +76,37 @@ function ProtectedLayout() {
         <FooterDock>
           <TabBar />
         </FooterDock>
+      </div>
+    </FooterSlotProvider>
+  )
+}
+
+function AdminLayout() {
+  const { session, loading } = useAuth()
+  const { isAdmin, loading: adminLoading } = useIsAdmin()
+
+  if (loading || adminLoading) {
+    return (
+      <Page wide>
+        <SkeletonList count={4} />
+      </Page>
+    )
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />
+  }
+
+  return (
+    <FooterSlotProvider>
+      <ScrollToTop />
+      <div className="flex min-h-svh min-w-0 flex-col">
+        <AdminHeader />
+        <Outlet />
       </div>
     </FooterSlotProvider>
   )
@@ -81,6 +124,16 @@ const router = createBrowserRouter([
       { path: '/reservations/:id/pay', element: <PayPage /> },
       { path: '/reservations/:id', element: <ConfirmPage /> },
       { path: '/history', element: <HistoryPage /> },
+    ],
+  },
+  {
+    element: <AdminLayout />,
+    children: [
+      { path: '/admin', element: <AdminDashboardPage /> },
+      { path: '/admin/stations', element: <AdminStationsPage /> },
+      { path: '/admin/stations/:id', element: <AdminStationDetailPage /> },
+      { path: '/admin/reservations', element: <AdminReservationsPage /> },
+      { path: '/admin/payments', element: <AdminPaymentsPage /> },
     ],
   },
 ])

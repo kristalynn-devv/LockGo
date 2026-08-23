@@ -76,3 +76,73 @@ export type LockerFilters = {
   availableOnly: boolean
   sort: LockerSort
 }
+
+export type Me = {
+  id: string
+  email: string | null
+  role: 'user' | 'admin'
+  display_name: string | null
+}
+
+export type AdminStationListItem = {
+  id: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  status: string
+  compartment_count: number
+  created_at: string
+}
+
+export type AdminStation = {
+  id: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  status: string
+  created_at: string
+  compartments: { id: string; size: Size; label: string }[]
+  pricing: Partial<Record<Size, number>>
+}
+
+export type AdminReservation = {
+  id: string
+  reservation_number: string
+  user_id: string
+  customer_name: string | null
+  station_id: string
+  station_name: string
+  size: Size
+  compartment_label: string
+  start_time: string
+  end_time: string
+  status: string
+  paid: boolean
+  paid_at: string | null
+  unit_price: number
+  duration_hours: number
+  total_price: number
+}
+
+export type Payment = {
+  id: string
+  reservation_id: string
+  reservation_number: string
+  user_id: string
+  station_name: string
+  amount: number
+  currency: string
+  method: string
+  status: string
+  created_at: string
+}
+
+export type AdminSummary = {
+  stations: { Open: number; Maintenance: number; Closed: number; total: number }
+  reservations_active_today: number
+  revenue_today: number
+  revenue_this_month: number
+  reservations_total: number
+}

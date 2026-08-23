@@ -16,6 +16,9 @@ export type IconName =
   | 'sun'
   | 'moon'
   | 'close'
+  | 'grid'
+  | 'building'
+  | 'card'
 
 export function Icon({
   name,
@@ -100,6 +103,20 @@ export function IconSprite() {
         </symbol>
         <symbol id="lg-close" viewBox="0 0 24 24">
           <path d="M6 6l12 12M18 6 6 18" />
+        </symbol>
+        <symbol id="lg-grid" viewBox="0 0 24 24">
+          <rect x="3.6" y="3.6" width="7.4" height="7.4" rx="1.4" />
+          <rect x="13" y="3.6" width="7.4" height="7.4" rx="1.4" />
+          <rect x="3.6" y="13" width="7.4" height="7.4" rx="1.4" />
+          <rect x="13" y="13" width="7.4" height="7.4" rx="1.4" />
+        </symbol>
+        <symbol id="lg-building" viewBox="0 0 24 24">
+          <rect x="5" y="3.6" width="14" height="16.8" rx="1.6" />
+          <path d="M8.4 7.6h1.4M14.2 7.6h1.4M8.4 11.6h1.4M14.2 11.6h1.4M8.4 15.6h1.4M14.2 15.6h1.4M10 20.4v-3.2h4v3.2" />
+        </symbol>
+        <symbol id="lg-card" viewBox="0 0 24 24">
+          <rect x="3.2" y="5.6" width="17.6" height="12.8" rx="2" />
+          <path d="M3.2 9.6h17.6M6.4 14h4" />
         </symbol>
       </defs>
     </svg>

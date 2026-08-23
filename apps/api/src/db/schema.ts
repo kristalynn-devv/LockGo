@@ -32,7 +32,8 @@ export const reservationStatus = pgEnum('reservation_status', [
   'Expired',
 ]);
 
-export const users = pgTable('users', {
+/** ลูกค้าทั้งหมด — สร้างอัตโนมัติจาก trigger เมื่อ signup ผ่าน Supabase Auth */
+export const customers = pgTable('customers', {
   id: uuid('id').primaryKey(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
@@ -40,6 +41,15 @@ export const users = pgTable('users', {
     .notNull()
     .defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** พนักงาน — เพิ่มด้วยมือเท่านั้น ไม่มี self-serve signup; มีแถวในตารางนี้ = admin */
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey(),
+  displayName: text('display_name'),
+  createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
@@ -101,7 +111,7 @@ export const reservations = pgTable(
     reservationNumber: text('reservation_number').notNull(),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'restrict' }),
+      .references(() => customers.id, { onDelete: 'restrict' }),
     compartmentId: uuid('compartment_id')
       .notNull()
       .references(() => compartments.id, { onDelete: 'restrict' }),
@@ -143,7 +153,7 @@ export const idempotencyKeys = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => customers.id, { onDelete: 'cascade' }),
     key: text('key').notNull(),
     reservationId: uuid('reservation_id').references(() => reservations.id, {
       onDelete: 'set null',
@@ -168,7 +178,7 @@ export const payments = pgTable(
       .references(() => reservations.id, { onDelete: 'restrict' }),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'restrict' }),
+      .references(() => customers.id, { onDelete: 'restrict' }),
     amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
     currency: text('currency').notNull().default('THB'),
     method: text('method').notNull().default('promptpay'),
