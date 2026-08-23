@@ -61,9 +61,25 @@ pnpm install
 cp .env.example .env
 ```
 
-จากนั้นเติมค่าใน `.env` ตามหัวข้อ 5–6 แล้วค่อยรันแอป
+จากนั้นเติมค่าใน `.env` ตามหัวข้อ 5–6 แล้วทำ Database Setup (§6) ก่อนรันแอป (§7)
 
-โครง repo: `apps/api` · `apps/web` · `packages/shared` · `supabase/migrations`
+### Windows — `setup.cmd` + `run.cmd`
+
+สคริปต์ที่ราก repo (double-click หรือรันจาก cmd):
+
+| สคริปต์ | ใช้เมื่อ | ทำอะไร |
+|---------|---------|--------|
+| [`setup.cmd`](./setup.cmd) | ครั้งแรก / หลัง clone | `pnpm install` → สร้าง `.env` จาก `.env.example` → `db:migrate` → `db:seed` |
+| [`run.cmd`](./run.cmd) | รันปกติทุกครั้ง | เช็ค `pnpm` + `.env` แล้ว `pnpm dev` |
+
+ลำดับครั้งแรก:
+
+1. `setup.cmd` — ถ้ายังไม่มี `.env` จะ copy จาก `.env.example` แล้วหยุดให้เติมค่า
+2. แก้ `.env` ตาม §5–6 (Supabase URL, keys, `DATABASE_URL`)
+3. `setup.cmd` อีกครั้ง — migrate + seed
+4. `run.cmd` — เปิด Web `:5173` + API `:3000`
+
+โครง repo: `apps/api` · `apps/web` · `packages/shared` · `supabase/migrations` · `setup.cmd` · `run.cmd`
 
 ---
 
@@ -101,14 +117,25 @@ Vite อ่าน `.env` ที่ราก repo (`apps/web/vite.config.ts` ต�
 2. Authentication → Providers → เปิด Email
 3. Authentication → URL Configuration → เพิ่ม `http://localhost:5173/auth/callback`
 4. คัดลอก URL, publishable key, service_role, JWT secret, และ Database connection string ลง `.env`
-5. รัน
+5. รัน migrate แล้ว seed
 
 ```bash
 pnpm db:migrate
 pnpm db:seed
 ```
 
-`db:migrate` รัน Drizzle จาก `apps/api/drizzle/` แล้วตามด้วย SQL มือใน `supabase/migrations/` (trigger, EXCLUDE, RLS) **ห้ามใช้ `drizzle-kit push`**  
+Windows: `setup.cmd` (ขั้น migrate + seed ทำอัตโนมัติเมื่อมี `.env` แล้ว)
+
+**migrate เอา schema จากไหน?** ไม่ได้ดึงข้อมูลจากที่อื่น — นำ SQL ใน repo ไปสร้างโครงสร้างบน Postgres ของคุณ (ผ่าน `DATABASE_URL`):
+
+| แหล่ง | โฟลเดอร์ | เนื้อหา |
+|-------|----------|---------|
+| Drizzle | `apps/api/drizzle/` | ตารางหลัก (stations, compartments, reservations, …) |
+| SQL มือ | `supabase/migrations/` | auth sync, EXCLUDE กันจองซ้อน, RLS, RPC |
+
+**seed เอาข้อมูลจากไหน?** hardcode ใน `apps/api/src/db/seed.ts` — สร้างบัญชี Alice/Bob ผ่าน Supabase Auth API และใส่สถานีตู้ 5 แห่งในกรุงเทพ
+
+`db:migrate` รัน [`apps/api/src/db/run-migrations.ts`](./apps/api/src/db/run-migrations.ts) — Drizzle ก่อน แล้วตามด้วย SQL มือ **ห้ามใช้ `drizzle-kit push`**  
 ถ้ารันซ้ำบนฐานที่มีตารางแล้ว สคริปต์จะข้ามชุดที่ลงไปแล้ว ไม่ต้องลบโปรเจกต์ทิ้ง
 
 ### ทางที่ 2 — Supabase CLI + Docker
@@ -117,7 +144,7 @@ pnpm db:seed
 npx supabase start
 ```
 
-เอา URL / anon / service_role / DB จาก `npx supabase status` ใส่ `.env` แล้วรัน `pnpm db:migrate` กับ `pnpm db:seed` เหมือนทางที่ 1 Google OAuth ใช้บน local stack ไม่ได้ — ใช้ email/password
+เอา URL / anon / service_role / DB จาก `npx supabase status` ใส่ `.env` แล้วรัน `pnpm db:migrate` กับ `pnpm db:seed` (Windows: `setup.cmd`) เหมือนทางที่ 1 Google OAuth ใช้บน local stack ไม่ได้ — ใช้ email/password
 
 ### บัญชีทดสอบ (สร้างโดย seed)
 
@@ -144,11 +171,26 @@ npx supabase start
 pnpm dev
 ```
 
+Windows:
+
+```cmd
+run.cmd
+```
+
+`run.cmd` รัน web + api พร้อมกัน (`pnpm --parallel --filter @lockgo/api --filter @lockgo/web dev`) — ต้องมี `.env` แล้ว ไม่ทำ install/migrate/seed
+
 - Web: http://localhost:5173
 - API: http://localhost:3000
 - Swagger: http://localhost:3000/api/docs
 
 ล็อกอินด้วย Alice แล้วเดิน Find → Detail → Reserve → Confirm → History
+
+หยุด dev server — กด `Ctrl+C` ในหน้าต่างที่รันอยู่ หรือปิด terminal ถ้า port ค้าง (Windows):
+
+```cmd
+netstat -ano | findstr ":3000 :5173"
+taskkill /PID <pid> /F /T
+```
 
 ---
 
