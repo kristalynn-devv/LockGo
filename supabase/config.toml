@@ -1,0 +1,45 @@
+# Local stack for `npx supabase start` (README §6 ทางที่ 2) and for CI.
+# Schema is NOT applied from here — `pnpm db:migrate` owns the order:
+# drizzle tables first, then the hand-written SQL in supabase/migrations/.
+project_id = "lockgo"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+# seed.ts creates Alice/Bob through the admin API and the e2e suite signs in
+# with a password straight after — no mailbox in CI, so skip confirmation.
+enable_confirmations = false
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = false
+
+[storage]
+enabled = false
+
+[analytics]
+enabled = false
+
+[inbucket]
+enabled = false

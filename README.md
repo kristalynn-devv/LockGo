@@ -228,6 +228,18 @@ pnpm --filter @lockgo/api test:e2e -- reservations.e2e-spec.ts
 
 ครอบคลุม: ตัวกรองค้นหา · จองสำเร็จ · เต็มแล้ว 409 · idempotency · Alice/Bob พร้อมกัน · ยกเลิกแล้วจองใหม่
 
+### รันบน CI
+
+`.github/workflows/ci.yml` มีสอง job
+
+| Job | ฐานข้อมูล | รันอะไร |
+|-----|-----------|---------|
+| `unit` | ไม่ใช้ | unit test ทั้งชุด + typecheck api + build web |
+| `e2e` | Supabase local stack ที่ CLI ยกขึ้นบน runner | `db:migrate` → `db:seed` → e2e ทั้งชุด |
+
+job `e2e` ไม่ต้องใช้ secret ใน GitHub เพราะ key ของ local stack เป็นค่าคงที่ของ CLI —
+ขั้นตอนเดียวกับ README §6 ทางที่ 2 เป๊ะ ๆ ถ้า CI เขียว แปลว่าเส้นทางที่เขียนไว้ในเอกสารนี้รันได้จริง
+
 ตรวจหน้าบ้าน
 
 ```bash

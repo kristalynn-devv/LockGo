@@ -62,10 +62,10 @@ describe('Lockers (e2e)', () => {
     const names = response.body.items.map((item: { name: string }) => item.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'LockGo Central Station',
-        'LockGo Siam Square',
-        'LockGo Asok',
-        'LockGo Mo Chit',
+        'Central Station',
+        'Siam Square',
+        'Asok',
+        'Mo Chit',
       ]),
     );
     expect(names.join(' ')).not.toMatch(/Maintenance/);
@@ -90,7 +90,7 @@ describe('Lockers (e2e)', () => {
       .expect(200);
 
     expect(nearby.body.items).toHaveLength(1);
-    expect(nearby.body.items[0].name).toBe('LockGo Central Station');
+    expect(nearby.body.items[0].name).toBe('Central Station');
     expect(nearby.body.items[0].distance_km).toBe(0);
 
     const large = await request(app.getHttpServer())

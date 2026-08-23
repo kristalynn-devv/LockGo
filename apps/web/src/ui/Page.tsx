@@ -34,7 +34,7 @@ export const primaryButtonClass =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
 
 export const secondaryButtonClass =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-elevated disabled:cursor-not-allowed disabled:border-line disabled:bg-elevated disabled:text-ink-faint'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
 
 export const linkButtonClass =
   'inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-accent-text hover:underline'

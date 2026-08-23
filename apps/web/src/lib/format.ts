@@ -87,12 +87,6 @@ export function combineLocal(date: string, time: string): Date {
   return new Date(`${date}T${time}:00`)
 }
 
-export function sizeLabel(size: Size): string {
-  if (size === 'Small') return 'Small'
-  if (size === 'Medium') return 'Medium'
-  return 'Large'
-}
-
 export function shortSize(size: Size): string {
   return size[0] ?? size
 }

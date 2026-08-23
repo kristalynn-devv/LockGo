@@ -41,6 +41,15 @@ export const dbEnv = {
   get databaseUrl() {
     return resolveDatabaseUrl(required('DATABASE_URL'));
   },
+  // Supabase hosted requires TLS; the local CLI stack (127.0.0.1) speaks plain TCP.
+  get sslMode(): 'require' | false {
+    try {
+      const host = new URL(this.databaseUrl).hostname;
+      return host === 'localhost' || host === '127.0.0.1' ? false : 'require';
+    } catch {
+      return 'require';
+    }
+  },
   get supabaseUrl() {
     return required('SUPABASE_URL');
   },
