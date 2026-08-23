@@ -20,7 +20,7 @@ c:\Users\krist\Downloads\_LOCKGO PRD.docx
 
 **คนแก้หลัง AI ร่าง:** ย้ายข้อสรุปไป `docs/requirements.md` อย่างเดียว เลิกใช้ `ASSUMPTIONS.md` / `NOTES.md` เป็นแหล่งลงมือ และล็อกว่าจองล่วงหน้า 7 วัน ไม่ใช่ 1 วันตามร่างเก่า
 
-**ผลลัพธ์:** [requirements.md](./requirements.md) §25 · commit `f199940`
+**ผลลัพธ์:** [requirements.md](./requirements.md) §25 · commit `c1157cd`
 
 ---
 
@@ -46,7 +46,7 @@ seed 5 สถานีกรุงเทพ + Alice/Bob
 
 **คนแก้หลัง AI ร่าง:** ย้าย `btree_gist` ไป schema `extensions` ตาม advisor ของ Supabase และให้ฟังก์ชัน `GRANT` เฉพาะ `postgres` / `service_role`
 
-**ผลลัพธ์:** [0002_reservation_lock.sql](../supabase/migrations/0002_reservation_lock.sql) · commit `5fc65e8`
+**ผลลัพธ์:** [0002_reservation_lock.sql](../supabase/migrations/0002_reservation_lock.sql) · commit `b5d403f`
 
 ---
 
@@ -70,7 +70,7 @@ afterAll ต้อง closeDb
 
 **คนแก้หลัง AI ร่าง:** เลื่อน `futureHour` ไปช่อง 30/36/40/52… เพื่อไม่ชนข้อมูลที่ค้างจากรันก่อนหน้า
 
-**ผลลัพธ์:** [reservations.e2e-spec.ts](../apps/api/test/reservations.e2e-spec.ts) · commit `fd3ec18`
+**ผลลัพธ์:** [reservations.e2e-spec.ts](../apps/api/test/reservations.e2e-spec.ts) · commit `0781b35`
 
 ---
 
@@ -99,4 +99,4 @@ Realtime reservations → invalidateQueries
 
 **คนแก้หลัง AI ร่าง:** `available_only` ฝั่ง API ต้องแปลง `'true'`/`'1'` เอง ห้าม `Boolean("false")` และ Vite ต้องตั้ง `envDir` ไปที่ราก repo
 
-**ผลลัพธ์:** `apps/web/src/pages/*` · commit `b7f8505`
+**ผลลัพธ์:** `apps/web/src/pages/*` · commit `b5a9e10`
