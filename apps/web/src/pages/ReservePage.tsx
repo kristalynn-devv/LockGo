@@ -6,7 +6,10 @@ import { useAuth } from '../lib/auth'
 import {
   addDays,
   combineLocal,
+  earliestBookingDate,
   formatDateTime,
+  hourOptions,
+  latestBookingDate,
   MIN_TOTAL_PRICE,
   money,
   nextHour,
@@ -31,18 +34,13 @@ import { DateField } from '../ui/DateField'
 import { MenuSelect } from '../ui/MenuSelect'
 import { ErrorState, FormError, NoticeCard, Skeleton } from '../ui/states'
 
+const DURATION_OPTIONS = Array.from({ length: 24 }, (_, index) => ({
+  value: String(index + 1),
+  label: `${index + 1} ชม.`,
+}))
+
 function isSize(value: string | null): value is Size {
   return value === 'Small' || value === 'Medium' || value === 'Large'
-}
-
-function hourOptions(date: string) {
-  const today = toDateInput(new Date())
-  const minHour = date === today ? nextHour().getHours() : 0
-  return Array.from({ length: Math.max(24 - minHour, 0) }, (_, index) => {
-    const hour = minHour + index
-    const value = `${String(hour).padStart(2, '0')}:00`
-    return { value, label: value }
-  })
 }
 
 export function ReservePage() {
@@ -82,7 +80,10 @@ export function ReservePage() {
       )
     },
     onSuccess: (reservation) => {
-      navigate(`/reservations/${reservation.id}`, { replace: true })
+      navigate(`/reservations/${reservation.id}`, {
+        replace: true,
+        state: { confirmed: true },
+      })
     },
   })
 
@@ -112,13 +113,23 @@ export function ReservePage() {
   const station = locker.data
   const rate = station.rates[size]
   const total = totalPrice(rate, duration)
-  const minDate = toDateInput(new Date())
-  const maxDate = toDateInput(addDays(new Date(), 7))
+  const minDate = earliestBookingDate()
+  const maxDate = latestBookingDate()
+  const hours = hourOptions(date)
   const start = combineLocal(date, time)
-  const validStart = !Number.isNaN(start.getTime())
+  const validStart = !Number.isNaN(start.getTime()) && hours.some((option) => option.value === time)
   const end = validStart ? new Date(start.getTime() + duration * 3_600_000) : null
   const conflict = mutation.error instanceof ApiRequestError && mutation.error.status === 409
-  const disabled = mutation.isPending || station.available[size] === 0
+  const sizeFull = station.available[size] === 0
+  const disabled = mutation.isPending || sizeFull || hours.length === 0 || !validStart
+
+  function onDateChange(next: string) {
+    setDate(next)
+    const nextHours = hourOptions(next)
+    if (!nextHours.some((option) => option.value === time)) {
+      setTime(nextHours[0]?.value ?? toTimeInput(nextHour()))
+    }
+  }
 
   function onConfirm() {
     setFormError(null)
@@ -136,6 +147,9 @@ export function ReservePage() {
     }
     mutation.mutate()
   }
+
+  const confirmLabel = mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยันการจอง'
+  const compactConfirmLabel = mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยัน'
 
   return (
     <Page wide>
@@ -161,7 +175,10 @@ export function ReservePage() {
                 </span>
                 <div className="min-w-0">
                   <h2 className="text-base font-semibold wrap-break-word">{station.name}</h2>
-                  <p className="text-sm text-ink-muted wrap-break-word">{station.address}</p>
+                  <p className="mt-0.5 flex items-start gap-1.5 text-sm text-ink-muted">
+                    <Icon name="pin" className="mt-0.5 size-4 shrink-0" />
+                    <span className="min-w-0 wrap-break-word">{station.address}</span>
+                  </p>
                 </div>
               </div>
             </section>
@@ -182,7 +199,7 @@ export function ReservePage() {
                         empty
                           ? 'pointer-events-none border-line text-ink-faint opacity-50'
                           : isSelected
-                            ? 'border-accent bg-surface font-semibold text-accent-text'
+                            ? 'border-accent bg-accent-soft font-semibold text-accent-text ring-2 ring-accent'
                             : 'border-line-strong bg-surface text-ink-muted hover:bg-elevated'
                       }`}
                     >
@@ -202,32 +219,25 @@ export function ReservePage() {
                 <label className="block min-w-0">
                   <span className={labelClass}>วันที่</span>
                   <div className="mt-1.5">
-                    <DateField
-                      value={date}
-                      min={minDate}
-                      max={maxDate}
-                      onChange={(next) => {
-                        setDate(next)
-                        const hours = hourOptions(next)
-                        if (!hours.some((option) => option.value === time)) {
-                          setTime(hours[0]?.value ?? toTimeInput(nextHour()))
-                        }
-                      }}
-                    />
+                    <DateField value={date} min={minDate} max={maxDate} onChange={onDateChange} />
                   </div>
                 </label>
                 <label className="block min-w-0">
                   <span className={labelClass}>เวลา</span>
                   <div className="mt-1.5">
-                    <MenuSelect
-                      variant="field"
-                      value={time}
-                      options={hourOptions(date)}
-                      onChange={setTime}
-                    />
+                    {hours.length === 0 ? (
+                      <p className="flex min-h-11 items-center rounded-lg border border-line bg-elevated px-3 text-sm text-ink-faint">
+                        ไม่มีชั่วโมงที่เลือกได้
+                      </p>
+                    ) : (
+                      <MenuSelect variant="field" value={time} options={hours} onChange={setTime} />
+                    )}
                   </div>
                 </label>
               </div>
+              {hours.length === 0 ? (
+                <p className="mt-2 text-xs text-ink-muted">วันนี้ไม่มีชั่วโมงที่จองได้แล้ว เลือกวันถัดไป</p>
+              ) : null}
 
               <label className="mt-3 block">
                 <span className={labelClass}>ระยะเวลา</span>
@@ -235,10 +245,7 @@ export function ReservePage() {
                   <MenuSelect
                     variant="field"
                     value={String(duration)}
-                    options={Array.from({ length: 24 }, (_, index) => ({
-                      value: String(index + 1),
-                      label: `${index + 1} ชม.`,
-                    }))}
+                    options={DURATION_OPTIONS}
                     onChange={(next) => setDuration(Number(next))}
                   />
                 </div>
@@ -294,9 +301,9 @@ export function ReservePage() {
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-ink-muted">อัตรา</dt>
+                <dt className="text-ink-muted">ราคา</dt>
                 <dd className="font-semibold tabular-nums">
-                  {money(rate)} × {duration}
+                  {money(rate)} × {duration} ชม.
                 </dd>
               </div>
             </dl>
@@ -317,7 +324,7 @@ export function ReservePage() {
               disabled={disabled}
               onClick={onConfirm}
             >
-              {mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยันการจอง'}
+              {confirmLabel}
             </button>
           </div>
         }
@@ -336,7 +343,7 @@ export function ReservePage() {
           disabled={disabled}
           onClick={onConfirm}
         >
-          {mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยัน'}
+          {compactConfirmLabel}
         </button>
       </ActionBar>
     </Page>

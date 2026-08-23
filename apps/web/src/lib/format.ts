@@ -35,11 +35,35 @@ export function formatTimeRange(startIso: string, endIso: string): string {
   return `${date.format(start)} · ${time.format(start)}–${time.format(end)}`
 }
 
-export function nextHour(): Date {
-  const value = new Date()
+export function nextHour(at = new Date()): Date {
+  const value = new Date(at)
   value.setMinutes(0, 0, 0)
   value.setHours(value.getHours() + 1)
   return value
+}
+
+/** วันที่แรกที่จองได้ — ถ้าชั่วโมงถัดไปข้ามวัน จะเป็นพรุ่งนี้ ไม่ใช่วันนี้ */
+export function earliestBookingDate(at = new Date()): string {
+  return toDateInput(nextHour(at))
+}
+
+export function latestBookingDate(at = new Date()): string {
+  return toDateInput(addDays(at, 7))
+}
+
+/** ชั่วโมงที่เลือกได้ในวันนั้น ทีละ 1 ชม. ตาม U-03 — ไม่รวมเวลาที่ผ่านไปแล้ว */
+export function hourOptions(date: string, at = new Date()): { value: string; label: string }[] {
+  const earliest = nextHour(at)
+  const earliestDate = toDateInput(earliest)
+  if (date < earliestDate) {
+    return []
+  }
+  const minHour = date === earliestDate ? earliest.getHours() : 0
+  return Array.from({ length: 24 - minHour }, (_, index) => {
+    const hour = minHour + index
+    const value = `${String(hour).padStart(2, '0')}:00`
+    return { value, label: value }
+  })
 }
 
 export function addDays(value: Date, days: number): Date {

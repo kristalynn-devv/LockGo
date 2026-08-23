@@ -96,29 +96,6 @@ export function DetailPage() {
                     {station.status === 'Open' ? 'เปิด' : station.status}
                   </Badge>
                 </div>
-
-                <hr className="my-4 border-line" />
-
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-elevated text-ink-muted">
-                      <Icon name="clock" />
-                    </span>
-                    <div>
-                      <dt className={labelClass}>เวลาทำการ</dt>
-                      <dd className="text-sm text-ink-muted">{station.operating_hours}</dd>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-elevated text-ink-muted">
-                      <Icon name="pin" />
-                    </span>
-                    <div>
-                      <dt className={labelClass}>ที่อยู่</dt>
-                      <dd className="truncate text-sm text-ink-muted">{station.address}</dd>
-                    </div>
-                  </div>
-                </dl>
               </section>
 
               {selected ? (
@@ -157,13 +134,12 @@ export function DetailPage() {
                       type="button"
                       disabled={disabled}
                       onClick={() => setSize(item)}
-                      className={`relative w-full rounded-lg border p-3.5 text-left ${
-                        disabled
+                      className={`relative w-full rounded-lg border p-3.5 text-left ${disabled
                           ? 'pointer-events-none border-line opacity-50'
                           : isSelected
                             ? 'border-accent bg-surface'
                             : 'border-line bg-surface hover:bg-elevated'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-elevated text-ink-muted">

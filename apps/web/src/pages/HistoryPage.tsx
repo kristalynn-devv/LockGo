@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiRequestError, cancelReservation, listReservations } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { formatTimeRange, money, statusTone } from '../lib/format'
+import type { Reservation } from '../lib/types'
 import { cardClass, cardGridClass, linkButtonClass, Page, secondaryButtonClass } from '../ui/Page'
 import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
 
@@ -25,13 +26,24 @@ export function HistoryPage() {
     enabled: Boolean(token),
   })
 
+  const inFlight = useRef<string | null>(null)
   const cancel = useMutation({
     mutationFn: (id: string) => cancelReservation(token, id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['reservations'] })
+    onSuccess: (updated) => {
+      queryClient.setQueryData<{ items: Reservation[] }>(
+        ['reservations', 'list'],
+        (current) => {
+          if (!current) return current
+          return {
+            items: current.items.map((row) => (row.id === updated.id ? updated : row)),
+          }
+        },
+      )
+      queryClient.setQueryData(['reservations', updated.id], updated)
       void queryClient.invalidateQueries({ queryKey: ['lockers'] })
     },
   })
+  const cancellingId = cancel.isPending ? cancel.variables : undefined
 
   const items = useMemo(() => {
     const rows = history.data?.items ?? []
@@ -138,10 +150,18 @@ export function HistoryPage() {
                   <button
                     type="button"
                     className={`${secondaryButtonClass} min-h-10 px-3.5 text-sm`}
-                    disabled={cancel.isPending}
-                    onClick={() => cancel.mutate(item.id)}
+                    disabled={cancellingId === item.id}
+                    onClick={() => {
+                      if (inFlight.current || cancel.isPending) return
+                      inFlight.current = item.id
+                      cancel.mutate(item.id, {
+                        onSettled: () => {
+                          inFlight.current = null
+                        },
+                      })
+                    }}
                   >
-                    ยกเลิก
+                    {cancellingId === item.id ? 'กำลังยกเลิก…' : 'ยกเลิก'}
                   </button>
                 ) : null}
               </div>

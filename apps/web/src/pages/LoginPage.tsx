@@ -16,7 +16,6 @@ import { ErrorState } from '../ui/states'
 const POINTS = [
   'ดูจำนวนช่องว่างแบบเรียลไทม์ทุกสถานี',
   'จองล่วงหน้าได้ถึง 7 วัน ครั้งละ 1–24 ชั่วโมง',
-  'กันจองซ้อน 0% ด้วยการล็อกช่องระดับฐานข้อมูล',
 ]
 
 export function LoginPage() {
@@ -72,9 +71,7 @@ export function LoginPage() {
           <ul className="mt-7 grid gap-3">
             {POINTS.map((point, index) => (
               <li key={point} className="flex items-start gap-2.5 text-sm opacity-90">
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/15 text-[11px] font-bold">
-                  {index + 1}
-                </span>
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/15 text-[11px] font-bold" />
                 {point}
               </li>
             ))}

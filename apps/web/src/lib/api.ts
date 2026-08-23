@@ -15,6 +15,8 @@ export class ApiRequestError extends Error {
 
 const MESSAGES: Record<string, string> = {
   NO_AVAILABILITY: 'ตู้ที่เลือกไม่ว่างในช่วงเวลานี้แล้ว กรุณาเลือกเวลาหรือขนาดอื่น',
+  STATION_UNAVAILABLE: 'ตู้นี้ไม่เปิดให้จอง',
+  INVALID_RESERVATION: 'เลือกเวลาเริ่มต้นในอนาคต ระยะ 1–24 ชม. และไม่เกิน 7 วัน',
   UNAUTHORIZED: 'กรุณาเข้าสู่ระบบอีกครั้ง',
   CANNOT_CANCEL: 'ยกเลิกได้เฉพาะรายการที่ยังจองอยู่',
   NOT_FOUND: 'ไม่พบข้อมูลที่ต้องการ',
