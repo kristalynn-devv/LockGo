@@ -42,7 +42,7 @@ Supabase   Auth + Postgres + Realtime
 |------|---------|--------|
 | Monorepo | pnpm workspace | สองแอปหนึ่งสัญญา HTTP ไม่แยก git repo |
 | Frontend | React 19 + Vite + TypeScript | ทำ 4 หน้าจอ + ประวัติได้เร็ว มี Vite 8 อยู่แล้ว |
-| Styling | Tailwind CSS v4 | responsive ตาม design token โดยไม่เขียน CSS แยก |
+| Styling | Tailwind CSS v4 | token ใน `index.css` · class ร่วมใน `Page.tsx` — ดู [docs/design.md](./docs/design.md) |
 | Backend | NestJS | guard / pipe / interceptor / Swagger / Jest อยู่ในที่เดียว |
 | ORM | Drizzle | schema เป็น TypeScript แล้วตามด้วย SQL มือสำหรับ EXCLUDE |
 | Database | Supabase Postgres | ได้ `btree_gist` + Realtime + Auth |
@@ -288,6 +288,6 @@ Error รูปเดียวทั้งระบบ: `{ statusCode, code, mes
 | ไฟล์ | เนื้อหา |
 |------|---------|
 | [docs/requirements.md](./docs/requirements.md) | ข้อกำหนดรวมและค่าที่ตัดสินแล้ว |
-| [docs/design.md](./docs/design.md) | Design token และ UI pattern |
+| [docs/design.md](./docs/design.md) | Token, โครงหน้า, ปุ่ม/การ์ดที่ใช้อยู่ตอนนี้ |
 | [docs/erd.md](./docs/erd.md) | ความสัมพันธ์ และเหตุผลที่ user แยกสองตาราง |
 | [docs/architecture.md](./docs/architecture.md) | เส้น read / write / realtime |

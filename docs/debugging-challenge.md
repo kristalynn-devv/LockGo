@@ -48,16 +48,27 @@
 
 **หน้าบ้าน** — สร้าง key ครั้งเดียวต่อหน้า ไม่สร้างตอนคลิก และปิดปุ่มตอนค้าง
 
-```30:30:apps/web/src/pages/ReservePage.tsx
+```61:61:apps/web/src/pages/ReservePage.tsx
   const idempotencyKey = useRef(crypto.randomUUID())
 ```
 
-```217:221:apps/web/src/pages/ReservePage.tsx
-      <button
-        type="button"
-        className={`${primaryButtonClass} mt-6`}
-        disabled={mutation.isPending || station.available[size] === 0}
-        onClick={onConfirm}
+เดสก์ท็อป (การ์ดสรุป) และมือถือ (`ActionBar`) ใช้ `disabled` ชุดเดียวกัน — `mutation.isPending` หรือเวลายังเลือกไม่ได้
+
+```345:351:apps/web/src/pages/ReservePage.tsx
+            <button
+              type="button"
+              className={`${primaryButtonClass} mt-3.5 hidden w-full lg:inline-flex`}
+              disabled={disabled}
+              onClick={onConfirm}
+            >
+```
+
+```364:368:apps/web/src/pages/ReservePage.tsx
+        <button
+          type="button"
+          className={compactButtonClass}
+          disabled={disabled}
+          onClick={onConfirm}
 ```
 
 **Nest** — หา `(user_id, key)` ก่อนเข้า service เจอแล้วคืนใบเดิมเป็น 201 ไม่สร้างแถวใหม่ 409 ไม่ถูกเก็บ จึงเปลี่ยนเวลาแล้วยิงใหม่ได้
@@ -71,15 +82,21 @@
 
 **Postgres** — หมดอายุที่เลย grace 15 นาทีในทรานแซกชันเดียวกัน แล้วล็อกแถวช่องก่อนเลือกช่องว่าง
 
-```74:104:supabase/migrations/0002_reservation_lock.sql
+```74:88:supabase/migrations/0002_reservation_lock.sql
   UPDATE public.reservations
-  SET status = 'Expired', updated_at = clock_timestamp()
+  SET
+    status = 'Expired',
+    updated_at = clock_timestamp()
   WHERE status = 'Reserved'
     AND no_show_deadline < clock_timestamp();
 
+  v_end_time := p_start_time + make_interval(hours => p_duration_hours);
+  v_deadline := p_start_time + interval '15 minutes';
+
   PERFORM 1
   FROM public.compartments c
-  WHERE c.station_id = p_station_id AND c.size = p_size
+  WHERE c.station_id = p_station_id
+    AND c.size = p_size
   FOR UPDATE;
 ```
 

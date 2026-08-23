@@ -88,16 +88,17 @@ sequenceDiagram
   end
 ```
 
-ปุ่ม Confirm ต้อง `disabled` ตอน `isPending` ด้วย — ชั้นนี้กันคลิกซ้ำ ไม่ใช่กันสองคนจองช่องเดียว
+ปุ่ม Confirm ต้อง `disabled` ตอน `isPending` ด้วย — ชั้นนี้กันคลิกซ้ำ ไม่ใช่กันสองคนจองช่องเดียว  
+มือถือใช้ `compactButtonClass` บน `ActionBar` เดสก์ท็อปใช้ปุ่มเต็มความกว้างในการ์ดสรุป — ทั้งคู่ผูก `disabled` ชุดเดียวกัน
 
-## พรมแดนโมดูล Nest (ยังไม่สร้าง — บล็อก C)
+## พรมแดนโมดูล Nest
 
-| โมดูล | หน้าที่ |
-|--------|--------|
-| Auth | ตรวจ JWT ด้วย `SUPABASE_JWT_SECRET` |
-| Lockers | `GET /api/lockers` และ `GET /api/lockers/{id}` |
-| Reservations | สร้าง ดู ประวัติ ยกเลิก |
-| Pricing | `max(rate × hours, 30)` |
+| โมดูล | ที่อยู่ | หน้าที่ |
+|--------|---------|--------|
+| Auth | `auth/auth.guard.ts` | ตรวจ JWT ด้วย `SUPABASE_JWT_SECRET` — ไม่แยก Nest module |
+| Lockers | `LockersModule` | `GET /api/lockers` · `/locations` · `/{id}` |
+| Reservations | `ReservationsModule` | สร้าง ดู ประวัติ ยกเลิก + idempotency interceptor |
+| Pricing | ใน service ของ lockers / reservations | `max(rate × hours, 30)` |
 
 path ไม่มี `/v1` และไม่ใช้คำว่า bookings (`T-01`)
 

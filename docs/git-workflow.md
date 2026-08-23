@@ -17,6 +17,7 @@
 | `b5a9e10` | F — UI | ทำหน้า Find / Detail / Reserve / Confirm / History |
 | `50148b8` | G | เทสต์ตัวกรองและกฎช่องว่าง |
 | `ee0c43f` | H | โชว์ workflow / prompt / review |
+| `326e572` | UI | การ์ด ตัวอักษร และ CTA มือถือให้ตรงสเปก โดยไม่เปลี่ยนตัวกรองหรือกฎจอง |
 
 ห้าม commit `.env`, `TASKS.md`, `NOTES.md`
 
