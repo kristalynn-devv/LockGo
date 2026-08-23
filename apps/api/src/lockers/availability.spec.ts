@@ -38,7 +38,7 @@ describe('availability', () => {
     expect(free).toBe(true);
   });
 
-  it('rejects a booking when a reserved slot overlaps the requested window', () => {
+  it('AC-03 rejects a booking when a reserved slot overlaps the requested window', () => {
     const free = isCompartmentFree(
       compartmentId,
       [
@@ -54,7 +54,7 @@ describe('availability', () => {
     expect(free).toBe(false);
   });
 
-  it('treats a reserved row past the no-show deadline as free', () => {
+  it('AC-19 treats a reserved row past the no-show deadline as free', () => {
     const now = new Date('2026-08-23T10:20:00.000Z');
     const row = reservation({
       start: '2026-08-23T10:00:00.000Z',

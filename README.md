@@ -153,6 +153,21 @@ npx supabase start
 | `alice.lockgo@example.com` | `LockGo-Alice-1` | ผู้ใช้หลัก เดิน journey จอง |
 | `bob.lockgo@example.com` | `LockGo-Bob-1` | คนที่สอง เทสต์ 403 และจองพร้อมกัน |
 
+หลัง `pnpm db:seed` มีตู้และใบจองสำหรับเดินเคส (รันซ้ำได้ ชุด `LK-SEED-*` จะถูกลบแล้วใส่ใหม่):
+
+| รายการ | ใช้เทสต์ |
+|--------|----------|
+| LockGo Thonglor — Medium = 0 | AC-03 เลือก Medium ไม่ได้ |
+| LockGo Ekkamai — Medium เหลือ 1 ช่อง | AC-06 สองคนจองพร้อมกัน สำเร็จได้ใบเดียว |
+| LockGo Ari Premium — เริ่มต้น ฿45 | ชิป **ไม่เกิน ฿30** ตัดออก · **ไม่เกิน ฿45** ยังอยู่ |
+| LockGo Don Mueang — ไกล Si Lom | จุด Si Lom + ระยะ 1–5 km ตัดออก |
+| LockGo On Nut (Maintenance) / Sala Daeng (Closed) | ไม่ขึ้นค้นหา (AC-09) |
+| LockGo National Stadium — ช่องเดียวถูกจองตอนนี้ | ชิป **ว่างเท่านั้น** ตัดออก (ใบ `LK-SEED-STADIUM-NOW` มีอายุ 15 นาทีหลัง seed) |
+| `LK-SEED-ALICE-CANCEL` Reserved | ยกเลิกจากประวัติ (AC-16) · ยิงซ้ำด้วย `Idempotency-Key: seed-alice-repeat` (AC-05) · ยกเลิกแล้วให้ Bob จองช่วงเดิมได้ (AC-18) |
+| `LK-SEED-ALICE-CANCELLED` / `LK-SEED-ALICE-EXPIRED` | ประวัติสถานะ · ยกเลิกใบพวกนี้ไม่ได้ (AC-17) |
+| `LK-SEED-ALICE-NOSHOW` Reserved เลยเดดไลน์ | เปิดประวัติหรือใบแล้วเป็น Expired และไม่กันช่อง (AC-19) |
+| `LK-SEED-BOB-LARGE` Reserved ที่ Mo Chit Large (+6 ชม.) | Alice จอง Large ช่วงเดียวกันได้ 409 · Bob เห็นใบนี้ Alice ไม่เห็น (AC-14) · Alice เปิดใบนี้ได้ 403 (AC-15) |
+
 ### ตั้งค่า Google OAuth (ไม่บังคับ)
 
 ถ้าไม่ตั้ง ยังล็อกอินด้วยอีเมลด้านบนได้ครบทุกฟีเจอร์
@@ -199,10 +214,10 @@ taskkill /PID <pid> /F /T
 ไม่ต้องมี `.env` สำหรับ unit test
 
 ```bash
-pnpm --filter @lockgo/api test -- availability.spec.ts pricing.service.spec.ts
+pnpm --filter @lockgo/api test
 ```
 
-ครอบคลุม: ช่องว่าง / ช่องทับ / ราคาขั้นต่ำ ฿30 / Medium 4 ชม. = ฿60
+ครอบคลุม AC ที่ทดสอบบน Node ได้โดยไม่ต้องมี `.env`: ตัวกรองราคาเริ่มต้น · ตู้ซ่อมไม่ขึ้นค้นหา · ขั้นต่ำ ฿30 · Medium 4 ชม. = ฿60 · เวลาจอง 1–24 ชม. / ไม่เกิน 7 วัน · 401 ไม่มี token · ยกเลิกได้เฉพาะ Reserved · Expired หลัง 15 นาที · 400 ไม่มี Idempotency-Key
 
 Integration / e2e ต้องมี `.env` ที่ชี้โปรเจกต์ที่ migrate + seed แล้ว
 
@@ -230,7 +245,7 @@ Swagger UI: http://localhost:3000/api/docs
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/lockers/locations` | สถานที่จำลองในกรุงเทพ |
-| GET | `/api/lockers` | ค้นหาตู้ ตัวกรอง location, distance, size, price, available_only, start_time, duration |
+| GET | `/api/lockers` | ค้นหาตู้ ตัวกรอง location หรือ latitude+longitude, distance, size, price, available_only, start_time, duration, sort |
 | GET | `/api/lockers/{id}` | รายละเอียด + Available Time รายขนาด |
 | POST | `/api/reservations` | สร้างการจอง |
 | GET | `/api/reservations` | ประวัติของตัวเอง |

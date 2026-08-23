@@ -3,6 +3,12 @@ import { and, desc, eq, inArray, lt } from 'drizzle-orm';
 import { ApiError } from '../common/http-error';
 import { getDb, getSql } from '../db/database';
 import { compartments, lockerStations, reservations } from '../db/schema';
+import {
+  assertOwner,
+  canCancel,
+  effectiveStatus,
+  isValidReservationWindow,
+} from './reservation-rules';
 
 type CreatedRow = {
   id: string;
@@ -48,6 +54,14 @@ export class ReservationsService {
       duration_hours: number;
     },
   ) {
+    if (!isValidReservationWindow(input.start_time, input.duration_hours)) {
+      throw new ApiError(
+        HttpStatus.BAD_REQUEST,
+        'INVALID_RESERVATION',
+        'The selected time is not valid',
+      );
+    }
+
     try {
       const sql = getSql();
       const rows = await sql<CreatedRow[]>`
@@ -72,7 +86,7 @@ export class ReservationsService {
     if (!row) {
       throw new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
     }
-    this.assertOwner(row.userId, userId);
+    assertOwner(row.userId, userId);
     return this.presentRow(row);
   }
 
@@ -95,9 +109,9 @@ export class ReservationsService {
     if (!row) {
       throw new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
     }
-    this.assertOwner(row.userId, userId);
+    assertOwner(row.userId, userId);
 
-    if (this.effectiveStatus(row) !== 'Reserved') {
+    if (!canCancel(this.effectiveStatus(row))) {
       throw new ApiError(
         HttpStatus.CONFLICT,
         'CANNOT_CANCEL',
@@ -123,24 +137,11 @@ export class ReservationsService {
     return this.presentRow(updated);
   }
 
-  private assertOwner(ownerId: string, userId: string) {
-    if (ownerId !== userId) {
-      throw new ApiError(
-        HttpStatus.FORBIDDEN,
-        'FORBIDDEN',
-        'You do not have access to this reservation',
-      );
-    }
-  }
-
   private effectiveStatus(
     row: { status: string; noShowDeadline: Date },
     at = new Date(),
   ) {
-    if (row.status === 'Reserved' && row.noShowDeadline < at) {
-      return 'Expired';
-    }
-    return row.status;
+    return effectiveStatus(row, at);
   }
 
   private async expireOverdue() {

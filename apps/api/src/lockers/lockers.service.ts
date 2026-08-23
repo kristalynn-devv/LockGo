@@ -1,14 +1,14 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { ApiError } from '../common/http-error';
-import { getDb } from '../db/database';
+import { getDb, getSql } from '../db/database';
 import {
   compartments,
   lockerStations,
   reservations,
   stationPricing,
 } from '../db/schema';
-import { haversineKm, MOCK_LOCATIONS, resolveOrigin } from '../locations';
+import { MOCK_LOCATIONS, resolveOrigin } from '../locations';
 import { PricingService } from '../pricing/pricing.service';
 import {
   isCompartmentFree,
@@ -16,6 +16,11 @@ import {
   Size,
 } from './availability';
 import { ListLockersQuery } from './dto/list-lockers.query';
+import {
+  isSearchableStation,
+  matchesLockerFilters,
+  sortLockers,
+} from './locker-filters';
 
 const SIZES: Size[] = ['Small', 'Medium', 'Large'];
 
@@ -32,16 +37,16 @@ export class LockersService {
     const window = this.windowFrom(query);
     const snapshot = await this.loadOpenStations();
 
+    const distances = origin
+      ? await this.distancesFromSql(
+          origin,
+          snapshot.map((station) => station.id),
+        )
+      : new Map<string, number>();
+
     const rows = snapshot
       .map((station) => {
-        const distanceKm = origin
-          ? haversineKm(
-              origin.latitude,
-              origin.longitude,
-              Number(station.latitude),
-              Number(station.longitude),
-            )
-          : null;
+        const distanceKm = distances.get(station.id);
         const available = this.countsFor(station, window);
         const rates = Object.fromEntries(
           station.rates.map((rate) => [rate.size, Number(rate.ratePerHour)]),
@@ -59,43 +64,16 @@ export class LockersService {
           longitude: Number(station.longitude),
           status: station.status,
           distance_km:
-            distanceKm === null ? null : Math.round(distanceKm * 10) / 10,
+            distanceKm == null ? null : Math.round(distanceKm * 10) / 10,
           available,
           starting_price: startingPrice,
           rates,
           availability_mode: query.start_time ? 'window' : 'now',
         };
       })
-      .filter((row) => {
-        if (
-          query.location &&
-          !resolveOrigin(query.location) &&
-          !row.name.toLowerCase().includes(query.location.toLowerCase()) &&
-          !row.address.toLowerCase().includes(query.location.toLowerCase())
-        ) {
-          return false;
-        }
-        if (query.distance != null && row.distance_km != null) {
-          if (row.distance_km > query.distance) {
-            return false;
-          }
-        }
-        if (query.size && row.available[query.size] === 0) {
-          return false;
-        }
-        if (query.price != null && row.starting_price > query.price) {
-          return false;
-        }
-        if (query.available_only) {
-          const total = SIZES.reduce((sum, size) => sum + row.available[size], 0);
-          if (total === 0) {
-            return false;
-          }
-        }
-        return true;
-      });
+      .filter((row) => matchesLockerFilters(row, query));
 
-    return { items: rows };
+    return { items: sortLockers(rows, query.sort) };
   }
 
   async detail(id: string, query: ListLockersQuery) {
@@ -127,6 +105,47 @@ export class LockersService {
       available_time: this.availableTime(station),
       operating_hours: '24 hours',
     };
+  }
+
+  private async distancesFromSql(
+    origin: { latitude: number; longitude: number },
+    stationIds: string[],
+  ) {
+    if (stationIds.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const sql = getSql();
+    const rows = await sql<{ id: string; km: number }[]>`
+      SELECT
+        id::text,
+        (
+          6371 * 2 * atan2(
+            sqrt(
+              sin(radians(latitude::float8 - ${origin.latitude}) / 2)
+                * sin(radians(latitude::float8 - ${origin.latitude}) / 2)
+              + cos(radians(${origin.latitude}))
+                * cos(radians(latitude::float8))
+                * sin(radians(longitude::float8 - ${origin.longitude}) / 2)
+                * sin(radians(longitude::float8 - ${origin.longitude}) / 2)
+            ),
+            sqrt(
+              1 - (
+                sin(radians(latitude::float8 - ${origin.latitude}) / 2)
+                  * sin(radians(latitude::float8 - ${origin.latitude}) / 2)
+                + cos(radians(${origin.latitude}))
+                  * cos(radians(latitude::float8))
+                  * sin(radians(longitude::float8 - ${origin.longitude}) / 2)
+                  * sin(radians(longitude::float8 - ${origin.longitude}) / 2)
+              )
+            )
+          )
+        ) AS km
+      FROM public.locker_stations
+      WHERE id IN ${sql(stationIds)}
+    `;
+
+    return new Map(rows.map((row) => [row.id, Number(row.km)]));
   }
 
   private originFrom(query: ListLockersQuery) {
@@ -219,11 +238,14 @@ export class LockersService {
       .select()
       .from(lockerStations)
       .where(eq(lockerStations.status, 'Open'));
-    if (stations.length === 0) {
+    const openStations = stations.filter((station) =>
+      isSearchableStation(station.status),
+    );
+    if (openStations.length === 0) {
       return [];
     }
 
-    const stationIds = stations.map((station) => station.id);
+    const stationIds = openStations.map((station) => station.id);
     const [compartmentRows, priceRows, reservationRows] = await Promise.all([
       db
         .select()
@@ -244,7 +266,7 @@ export class LockersService {
         ),
     ]);
 
-    return stations.map((station) => ({
+    return openStations.map((station) => ({
       ...station,
       compartments: compartmentRows.filter((row) => row.stationId === station.id),
       rates: priceRows.filter((row) => row.stationId === station.id),

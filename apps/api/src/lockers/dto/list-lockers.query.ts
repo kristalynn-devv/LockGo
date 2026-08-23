@@ -69,4 +69,9 @@ export class ListLockersQuery {
   @Min(1)
   @Max(24)
   duration?: number;
+
+  @ApiPropertyOptional({ enum: ['nearest', 'price', 'available'] })
+  @IsOptional()
+  @IsIn(['nearest', 'price', 'available'])
+  sort?: 'nearest' | 'price' | 'available';
 }
