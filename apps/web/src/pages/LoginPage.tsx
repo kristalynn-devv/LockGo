@@ -11,7 +11,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from '../ui/Page'
-import { ErrorState } from '../ui/states'
+import { FormError } from '../ui/states'
 
 const POINTS = [
   'ดูจำนวนช่องว่างแบบเรียลไทม์ทุกสถานี',
@@ -98,15 +98,18 @@ export function LoginPage() {
 
             {error ? (
               <div className="mt-4">
-                <ErrorState message={error} />
+                <FormError message={error} />
               </div>
             ) : null}
 
             <form className="mt-5 grid gap-3" onSubmit={(event) => void onSubmit(event)}>
-              <label className="block">
-                <span className={labelClass}>อีเมล</span>
+              <div className="grid gap-1.5">
+                <label htmlFor="login-email" className={labelClass}>
+                  อีเมล
+                </label>
                 <input
-                  className={`${fieldClass} mt-1.5`}
+                  id="login-email"
+                  className={fieldClass}
                   type="email"
                   autoComplete="email"
                   placeholder="you@example.com"
@@ -114,18 +117,21 @@ export function LoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   required
                 />
-              </label>
-              <label className="block">
-                <span className={labelClass}>รหัสผ่าน</span>
+              </div>
+              <div className="grid gap-1.5">
+                <label htmlFor="login-password" className={labelClass}>
+                  รหัสผ่าน
+                </label>
                 <input
-                  className={`${fieldClass} mt-1.5`}
+                  id="login-password"
+                  className={fieldClass}
                   type="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
                 />
-              </label>
+              </div>
               <button className={`${primaryButtonClass} w-full`} disabled={pending} type="submit">
                 {pending ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
               </button>

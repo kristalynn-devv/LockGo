@@ -3,9 +3,18 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiRequestError, cancelReservation, listReservations } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { formatTimeRange, money, statusTone } from '../lib/format'
+import { formatTimeRange, money, statusLabel, statusTone } from '../lib/format'
 import type { Reservation } from '../lib/types'
-import { cardClass, cardGridClass, linkButtonClass, Page, secondaryButtonClass } from '../ui/Page'
+import { Icon } from '../ui/icons'
+import {
+  cardClass,
+  cardGridClass,
+  cardHitClass,
+  labelClass,
+  linkButtonClass,
+  Page,
+  quietButtonClass,
+} from '../ui/Page'
 import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
 
 const STATUS_FILTERS = [
@@ -115,60 +124,78 @@ export function HistoryPage() {
       ) : (
         <div className={cardGridClass}>
           {items.map((item) => (
-            <article key={item.id} className={`${cardClass} min-w-0 p-4`}>
-              <div>
-                <p className="text-base font-semibold tabular-nums flex items-center justify-between">
-                  {item.reservation_number}
-                  <Badge tone={statusTone(item.status)}>{item.status}</Badge>
-                </p>
-                <p className="text-sm text-ink-muted">
-                  {item.size} · {item.compartment_label}
-                </p>
-              </div>
-
-              <div className="mt-2">
-                <p className="truncate text-sm text-ink-muted">{item.station_name}</p>
-                <p className="truncate text-sm text-ink-muted">{item.address}</p>
-              </div>
-
-              <p className="mt-1 text-sm text-ink-muted tabular-nums">
-                {formatTimeRange(item.start_time, item.end_time)}
-              </p>
-
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <p className="text-xl font-bold tabular-nums">{money(item.total_price)}</p>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between">
-                <Link
-                  to={`/reservations/${item.id}`}
-                  className="inline-flex min-h-10 border border-accent-soft items-center rounded-ctl px-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-soft"
-                >
-                  รายละเอียด
-                </Link>
-                {item.status === 'Reserved' ? (
-                  <button
-                    type="button"
-                    className={`${secondaryButtonClass} min-h-10 px-3.5 text-sm`}
-                    disabled={cancellingId === item.id}
-                    onClick={() => {
-                      if (inFlight.current || cancel.isPending) return
-                      inFlight.current = item.id
-                      cancel.mutate(item.id, {
-                        onSettled: () => {
-                          inFlight.current = null
-                        },
-                      })
-                    }}
-                  >
-                    {cancellingId === item.id ? 'กำลังยกเลิก…' : 'ยกเลิก'}
-                  </button>
-                ) : null}
-              </div>
-            </article>
+            <HistoryCard
+              key={item.id}
+              item={item}
+              cancelling={cancellingId === item.id}
+              onCancel={() => {
+                if (inFlight.current || cancel.isPending) return
+                inFlight.current = item.id
+                cancel.mutate(item.id, {
+                  onSettled: () => {
+                    inFlight.current = null
+                  },
+                })
+              }}
+            />
           ))}
         </div>
       )}
     </Page>
+  )
+}
+
+function HistoryCard({
+  item,
+  cancelling,
+  onCancel,
+}: {
+  item: Reservation
+  cancelling: boolean
+  onCancel: () => void
+}) {
+  const reserved = item.status === 'Reserved'
+
+  return (
+    <article className={`${cardClass} min-w-0 overflow-hidden`}>
+      <Link to={`/reservations/${item.id}`} className={cardHitClass}>
+        <div className="flex items-start justify-between gap-2.5">
+          <h2 className="min-w-0 text-base font-semibold">{item.station_name}</h2>
+          <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
+        </div>
+
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm font-medium tabular-nums">
+          <Icon name="clock" className="size-4 text-ink-muted" />
+          <span className="truncate">{formatTimeRange(item.start_time, item.end_time)}</span>
+        </p>
+
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
+          <Icon name="pin" className="size-4" />
+          <span className="truncate">{item.address}</span>
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <Badge tone="bg-elevated text-ink">{item.size}</Badge>
+          <span className="text-sm text-ink-muted">{item.compartment_label}</span>
+        </div>
+
+        <p className="mt-2 text-xs text-ink-faint tabular-nums">{item.reservation_number}</p>
+
+        <div className="mt-3.5 flex items-end justify-between gap-2.5 border-t border-line pt-3">
+          <div>
+            <p className={labelClass}>ราคารวม</p>
+            <p className="text-xl font-bold tabular-nums">{money(item.total_price)}</p>
+          </div>
+          <span className="text-sm font-medium text-accent-text">รายละเอียด</span>
+        </div>
+      </Link>
+      {reserved ? (
+        <div className="border-t border-line px-4">
+          <button type="button" className={quietButtonClass} disabled={cancelling} onClick={onCancel}>
+            {cancelling ? 'กำลังยกเลิก…' : 'ยกเลิก'}
+          </button>
+        </div>
+      ) : null}
+    </article>
   )
 }

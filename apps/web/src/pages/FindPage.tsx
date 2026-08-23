@@ -3,12 +3,13 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listLockers, listLocations } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { availabilityTone, formatDistance, money, shortSize, statusTone } from '../lib/format'
+import { availabilityTone, formatDistance, money, shortSize, statusLabel, statusTone } from '../lib/format'
 import { SIZES, type LocationItem, type LockerFilters, type LockerSort } from '../lib/types'
 import { Icon } from '../ui/icons'
 import {
   cardClass,
   cardGridClass,
+  cardHitClass,
   labelClass,
   linkButtonClass,
   Page,
@@ -157,7 +158,7 @@ export function FindPage() {
       return
     }
     if (!navigator.geolocation) {
-      setGeoError('เบราว์เซอร์นี้ไม่รองรับตำแหน่งปัจจุบัน — เลือกสถานที่จากรายการได้')
+      setGeoError('เบราว์เซอร์นี้ไม่รองรับตำแหน่งปัจจุบัน - เลือกสถานที่จากรายการได้')
       return
     }
     setLocating(true)
@@ -172,7 +173,7 @@ export function FindPage() {
         setLocating(false)
       },
       () => {
-        setGeoError('ไม่ได้รับอนุญาตตำแหน่ง — เลือกสถานที่จากรายการได้')
+        setGeoError('ไม่ได้รับอนุญาตตำแหน่ง - เลือกสถานที่จากรายการได้')
         setLocating(false)
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
@@ -385,12 +386,10 @@ export function FindPage() {
         {items.map((item) => {
           const distance = formatDistance(item.distance_km)
           return (
-            <Link key={item.id} to={`/lockers/${item.id}`} className={`${cardClass} block p-4 hover:bg-elevated`}>
+            <Link key={item.id} to={`/lockers/${item.id}`} className={`${cardClass} ${cardHitClass}`}>
               <div className="flex items-start justify-between gap-2.5">
                 <h2 className="min-w-0 text-base font-semibold">{item.name}</h2>
-                <Badge tone={statusTone(item.status)}>
-                  {item.status === 'Open' ? 'เปิด' : item.status}
-                </Badge>
+                <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
               </div>
 
               <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
@@ -401,7 +400,10 @@ export function FindPage() {
                 </span>
               </p>
 
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <p className={`${labelClass} mt-3`}>
+                {item.availability_mode === 'window' ? 'ว่างช่วงที่เลือก' : 'ว่างตอนนี้'}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {SIZES.map((size) => (
                   <Badge key={size} tone={availabilityTone(item.available[size])}>
                     {`${shortSize(size)} ${item.available[size]}`}

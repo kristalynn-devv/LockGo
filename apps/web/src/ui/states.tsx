@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Icon, type IconName } from './icons'
 import { cardClass, cardGridClass, primaryButtonClass, secondaryButtonClass } from './Page'
 
-/** โครงกระดูกที่มีสัดส่วนเหมือนการ์ดจริง — ไม่ใช่กล่องเทาลอย ๆ */
+/** โครงกระดูกที่มีสัดส่วนเหมือนการ์ดจริง - ไม่ใช่กล่องเทาลอย ๆ */
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
     <div className={`${cardClass} p-4 ${className}`}>
@@ -113,7 +113,7 @@ export function ErrorState({
   )
 }
 
-/** เตือนแบบไม่น่ากลัว — ใช้ตอนจองชนกัน (409) */
+/** เตือนแบบไม่น่ากลัว - ใช้ตอนจองชนกัน (409) */
 export function NoticeCard({
   title,
   message,
@@ -149,7 +149,7 @@ export function Badge({ children, tone }: { children: ReactNode; tone: string })
   )
 }
 
-/** สวิตช์/ตัวกรองแบบชิป — ไม่ใช่ดรอปดาวน์ */
+/** สวิตช์/ตัวกรองแบบชิป - ไม่ใช่ดรอปดาวน์ */
 export function Chip({
   pressed,
   onClick,
@@ -185,7 +185,7 @@ export function Chip({
   )
 }
 
-/** ตรวจฟอร์ม — ไม่ใช้ ErrorState ที่เป็นการ์ดโหลดไม่สำเร็จ */
+/** ตรวจฟอร์ม - ไม่ใช้ ErrorState ที่เป็นการ์ดโหลดไม่สำเร็จ */
 export function FormError({ message }: { message: string }) {
   return (
     <p

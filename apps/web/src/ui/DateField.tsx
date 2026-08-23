@@ -25,11 +25,15 @@ export function DateField({
   min,
   max,
   onChange,
+  unavailable,
+  ariaLabel = 'วันที่',
 }: {
   value: string
   min: string
   max: string
   onChange: (value: string) => void
+  unavailable?: (iso: string) => boolean
+  ariaLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(() => parseDate(value))
@@ -67,9 +71,10 @@ export function DateField({
   const today = toDateInput(new Date())
 
   return (
-    <div ref={root} className="relative min-w-0">
+    <div ref={root} className="relative w-full min-w-0">
       <button
         type="button"
+        aria-label={ariaLabel}
         aria-expanded={open}
         className={`${fieldClass} flex items-center justify-between gap-2 text-left`}
         onClick={() => setOpen((current) => !current)}
@@ -113,13 +118,15 @@ export function DateField({
                 return <span key={cell.key} />
               }
               const iso = cell.iso
-              const disabled = iso < min || iso > max
+              const booked = Boolean(unavailable?.(iso))
+              const disabled = iso < min || iso > max || booked
               const selected = iso === value
               return (
                 <button
                   key={cell.key}
                   type="button"
                   disabled={disabled}
+                  aria-label={booked ? `${cell.day} ถูกจองครบแล้ว` : undefined}
                   className={`h-8 rounded-lg text-sm ${
                     selected
                       ? 'bg-accent font-semibold text-accent-ink'
@@ -137,7 +144,7 @@ export function DateField({
               )
             })}
           </div>
-          {today >= min && today <= max ? (
+          {today >= min && today <= max && !unavailable?.(today) ? (
             <button
               type="button"
               className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-accent-text hover:bg-accent-soft"

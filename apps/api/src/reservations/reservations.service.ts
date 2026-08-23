@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, lt } from 'drizzle-orm';
 import { ApiError } from '../common/http-error';
 import { getDb, getSql } from '../db/database';
 import { compartments, lockerStations, reservations } from '../db/schema';
+import { mapReservationCreateError } from './reservation-errors';
 import {
   assertOwner,
   canCancel,
@@ -76,7 +77,7 @@ export class ReservationsService {
       `;
       return this.present(rows[0]);
     } catch (error) {
-      throw this.mapCreateError(error);
+      throw mapReservationCreateError(error);
     }
   }
 
@@ -225,45 +226,5 @@ export class ReservationsService {
       duration_hours: row.durationHours,
       total_price: Number(row.totalPrice),
     };
-  }
-
-  private mapCreateError(error: unknown): ApiError {
-    const code = (error as { code?: string }).code;
-    const message = (error as { message?: string }).message ?? '';
-
-    if (message.includes('NO_AVAILABILITY') || code === '23P01') {
-      return new ApiError(
-        HttpStatus.CONFLICT,
-        'NO_AVAILABILITY',
-        'That locker is no longer available for the selected time',
-      );
-    }
-    if (message.includes('STATION_UNAVAILABLE')) {
-      return new ApiError(
-        HttpStatus.CONFLICT,
-        'STATION_UNAVAILABLE',
-        'This locker is not open for booking',
-      );
-    }
-    if (
-      message.includes('START_IN_PAST') ||
-      message.includes('START_TOO_FAR') ||
-      message.includes('INVALID_DURATION')
-    ) {
-      return new ApiError(
-        HttpStatus.BAD_REQUEST,
-        'INVALID_RESERVATION',
-        'The selected time is not valid',
-      );
-    }
-    if (message.includes('STATION_NOT_FOUND') || message.includes('USER_NOT_FOUND')) {
-      return new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Resource not found');
-    }
-
-    return new ApiError(
-      HttpStatus.INTERNAL_SERVER_ERROR,
-      'INTERNAL_ERROR',
-      'Something went wrong. Please try again.',
-    );
   }
 }

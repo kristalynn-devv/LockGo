@@ -10,7 +10,7 @@ import {
 import { createPortal } from 'react-dom'
 
 /* --------------------------------------------------------------------------
-   class ที่ใช้ซ้ำทั่วแอป — เก็บไว้ที่เดียวเพื่อให้ปุ่ม/ฟิลด์หน้าตาเหมือนกันหมด
+   class ที่ใช้ซ้ำทั่วแอป - เก็บไว้ที่เดียวเพื่อให้ปุ่ม/ฟิลด์หน้าตาเหมือนกันหมด
    -------------------------------------------------------------------------- */
 /** ขอบจอตามสเกล 8pt · ความกว้างเนื้อหา = xl (1280) */
 export const shellPadClass = 'px-4 sm:px-6 lg:px-8'
@@ -21,11 +21,14 @@ export const cardGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols
 
 export const stickyRailClass = 'min-w-0 lg:sticky lg:top-16'
 
-/** โครง 12 คอลัมน์ — เนื้อหา 8 / แถบข้าง 4 ตั้งแต่ lg */
+/** โครง 12 คอลัมน์ - เนื้อหา 8 / แถบข้าง 4 ตั้งแต่ lg */
 export const splitGridClass = 'grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-6'
 
 export const cardClass =
   'min-w-0 rounded-card border border-line bg-surface shadow-card'
+
+/** พื้นที่กดของการ์ดรายการ - ทั้งใบเป็นเป้า ไม่ใช่แค่ข้อความมุมขวา */
+export const cardHitClass = 'block p-4 hover:bg-elevated'
 
 export const fieldClass =
   'min-h-11 w-full min-w-0 max-w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink hover:border-accent-line focus:border-accent focus:outline-none'
@@ -39,8 +42,33 @@ export const secondaryButtonClass =
 export const linkButtonClass =
   'inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-accent-text hover:underline'
 
+/** แอคชันทำลาย - เป้าครบแต่ไม่แย่งปุ่มหลัก */
+export const quietButtonClass =
+  'inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
+
 export const labelClass =
   'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint'
+
+/** ป้ายอยู่นอกเป้ากด — ห้ามห่อ DateField / MenuSelect ด้วย <label> */
+export function Field({
+  label,
+  hint,
+  className = '',
+  children,
+}: {
+  label: string
+  hint?: ReactNode
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={`min-w-0 ${className}`}>
+      <p className={labelClass}>{label}</p>
+      <div className="mt-1.5">{children}</div>
+      {hint ? <p className="mt-2 text-xs text-ink-muted">{hint}</p> : null}
+    </div>
+  )
+}
 
 /** คอนเทนเนอร์หลักของทุกหน้า */
 export function Page({
@@ -100,14 +128,14 @@ type FooterSlotValue = {
 
 const FooterSlotContext = createContext<FooterSlotValue | null>(null)
 
-/** ครอบทั้งหน้า — ActionBar อยู่ใน Outlet นอก FooterDock ต้องเห็น slot เดียวกัน */
+/** ครอบทั้งหน้า - ActionBar อยู่ใน Outlet นอก FooterDock ต้องเห็น slot เดียวกัน */
 export function FooterSlotProvider({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   const value = useMemo(() => ({ slot, setSlot }), [slot])
   return <FooterSlotContext.Provider value={value}>{children}</FooterSlotContext.Provider>
 }
 
-/** แถบล่างของแอป — ActionBar กับ TabBar ซ้อนกันเอง ไม่ต้องเดาความสูง */
+/** แถบล่างของแอป - ActionBar กับ TabBar ซ้อนกันเอง ไม่ต้องเดาความสูง */
 export function FooterDock({ children }: { children: ReactNode }) {
   const setSlot = useContext(FooterSlotContext)?.setSlot
   const slotRef = useRef<HTMLDivElement>(null)
@@ -125,7 +153,7 @@ export function FooterDock({ children }: { children: ReactNode }) {
   )
 }
 
-/** แถบสรุป+ปุ่มหลักบนมือถือ/แท็บเล็ต — lg ขึ้นไปใช้ปุ่มในการ์ดฝั่งขวาแทน */
+/** แถบสรุป+ปุ่มหลักบนมือถือ/แท็บเล็ต - lg ขึ้นไปใช้ปุ่มในการ์ดฝั่งขวาแทน */
 export function ActionBar({ children }: { children: ReactNode }) {
   const slot = useContext(FooterSlotContext)?.slot ?? null
   const bar = (

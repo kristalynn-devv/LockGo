@@ -6,6 +6,7 @@ export type MenuOption = { value: string; label: string }
 
 export function MenuSelect({
   label,
+  ariaLabel,
   value,
   options,
   onChange,
@@ -13,6 +14,7 @@ export function MenuSelect({
   variant = 'pill',
 }: {
   label?: string
+  ariaLabel?: string
   value: string
   options: MenuOption[]
   onChange: (value: string) => void
@@ -46,9 +48,10 @@ export function MenuSelect({
         }`
 
   return (
-    <div ref={root} className="relative min-w-0">
+    <div ref={root} className={`relative min-w-0 ${variant === 'field' ? 'w-full' : ''}`}>
       <button
         type="button"
+        aria-label={ariaLabel ?? label}
         aria-expanded={open}
         className={trigger}
         onClick={() => setOpen((current) => !current)}

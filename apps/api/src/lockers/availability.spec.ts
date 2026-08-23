@@ -1,4 +1,5 @@
 import {
+  freeHourRanges,
   isCompartmentFree,
   isLiveReservation,
   overlaps,
@@ -83,5 +84,30 @@ describe('availability', () => {
     expect(
       overlaps(aStart, aEnd, new Date('2026-08-23T11:00:00.000Z'), new Date('2026-08-23T13:00:00.000Z')),
     ).toBe(true);
+  });
+
+  it('omits a booked hour from free ranges for that size', () => {
+    const booked = reservation({
+      start: '2026-08-23T10:00:00.000Z',
+      end: '2026-08-23T12:00:00.000Z',
+    });
+    const ranges = freeHourRanges(
+      [compartmentId],
+      [booked],
+      new Date('2026-08-23T09:00:00.000Z'),
+      new Date('2026-08-23T14:00:00.000Z'),
+      new Date('2026-08-23T08:00:00.000Z'),
+    );
+
+    expect(ranges).toEqual([
+      {
+        start: new Date('2026-08-23T09:00:00.000Z'),
+        end: new Date('2026-08-23T10:00:00.000Z'),
+      },
+      {
+        start: new Date('2026-08-23T12:00:00.000Z'),
+        end: new Date('2026-08-23T14:00:00.000Z'),
+      },
+    ]);
   });
 });

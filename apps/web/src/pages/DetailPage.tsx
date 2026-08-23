@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getLocker } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { availabilityTone, formatTimeRange, money, statusTone } from '../lib/format'
+import { availabilityTone, groupRangesByDay, money, statusLabel, statusTone } from '../lib/format'
 import { SIZES, type Size } from '../lib/types'
 import { Icon } from '../ui/icons'
 import {
@@ -67,8 +67,10 @@ export function DetailPage() {
   }
 
   const station = locker.data
-  const selected = size ?? SIZES.find((item) => station.available[item] > 0) ?? null
+  const selected = size ?? SIZES.find((item) => station.available_time[item].length > 0) ?? null
   const selectedAvailable = selected ? station.available[selected] : 0
+  const selectedRanges = selected ? station.available_time[selected] : []
+  const canReserve = Boolean(selected && selectedRanges.length > 0)
 
   return (
     <Page wide>
@@ -91,30 +93,39 @@ export function DetailPage() {
                       <Icon name="pin" className="mt-0.5 size-4 shrink-0" />
                       <span className="min-w-0 wrap-break-word">{station.address}</span>
                     </p>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
+                      <Icon name="clock" className="size-4 shrink-0" />
+                      {station.operating_hours === '24 hours' ? 'เปิด 24 ชั่วโมง' : station.operating_hours}
+                    </p>
                   </div>
-                  <Badge tone={statusTone(station.status)}>
-                    {station.status === 'Open' ? 'เปิด' : station.status}
-                  </Badge>
+                  <Badge tone={statusTone(station.status)}>{statusLabel(station.status)}</Badge>
                 </div>
               </section>
 
               {selected ? (
                 <section className={`${cardClass} p-4`}>
                   <p className={labelClass}>ช่วงที่ว่าง · {selected}</p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {station.available_time[selected].length === 0 ? (
-                      <p className="text-sm text-ink-muted">ไม่มีช่วงว่างใน 7 วัน</p>
-                    ) : (
-                      station.available_time[selected].map((slot) => (
-                        <span
-                          key={`${slot.start}-${slot.end}`}
-                          className="rounded-full border border-line bg-elevated px-3 py-1.5 text-xs text-ink-muted tabular-nums"
-                        >
-                          {formatTimeRange(slot.start, slot.end)}
-                        </span>
-                      ))
-                    )}
-                  </div>
+                  {selectedRanges.length === 0 ? (
+                    <p className="mt-2.5 text-sm text-ink-muted">ไม่มีช่วงว่างใน 7 วัน</p>
+                  ) : (
+                    <div className="mt-2.5 grid gap-3">
+                      {groupRangesByDay(selectedRanges).map((group) => (
+                        <div key={group.date}>
+                          <p className="text-sm font-medium">{group.label}</p>
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {group.slots.map((slot) => (
+                              <span
+                                key={`${slot.start}-${slot.end}`}
+                                className="rounded-full border border-line bg-elevated px-3 py-1.5 text-xs tabular-nums"
+                              >
+                                {slot.time}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               ) : null}
             </div>
@@ -126,7 +137,8 @@ export function DetailPage() {
               <div className="mt-2.5 grid gap-2.5">
                 {SIZES.map((item) => {
                   const count = station.available[item]
-                  const disabled = count === 0
+                  const future = station.available_time[item].length > 0
+                  const disabled = !future
                   const isSelected = selected === item
                   return (
                     <button
@@ -137,7 +149,7 @@ export function DetailPage() {
                       className={`relative w-full rounded-lg border p-3.5 text-left ${disabled
                           ? 'pointer-events-none border-line opacity-50'
                           : isSelected
-                            ? 'border-accent bg-surface'
+                            ? 'border-accent bg-accent-soft ring-2 ring-accent'
                             : 'border-line bg-surface hover:bg-elevated'
                         }`}
                     >
@@ -149,7 +161,7 @@ export function DetailPage() {
                           <div className="flex items-center justify-between gap-2">
                             <b className="text-sm font-semibold">{item}</b>
                             <Badge tone={availabilityTone(count)}>
-                              {count === 0 ? 'เต็ม' : `ว่าง ${count}`}
+                              {count === 0 ? (future ? 'เต็มตอนนี้' : 'เต็ม') : `ว่าง ${count}`}
                             </Badge>
                           </div>
                           <p className="text-sm text-ink-muted">
@@ -174,7 +186,7 @@ export function DetailPage() {
               <button
                 type="button"
                 className={`${primaryButtonClass} mt-3.5 hidden w-full lg:inline-flex`}
-                disabled={!selected || selectedAvailable === 0}
+                disabled={!canReserve}
                 onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
               >
                 เลือกขนาดนี้
@@ -188,7 +200,7 @@ export function DetailPage() {
       <ActionBar>
         <div className="min-w-0 flex-1">
           <p className={labelClass}>
-            {selected ?? '—'} · {selectedAvailable === 0 ? 'เต็ม' : `ว่าง ${selectedAvailable}`}
+            {selected ?? '-'} · {selectedAvailable === 0 ? (selectedRanges.length > 0 ? 'เต็มตอนนี้' : 'เต็ม') : `ว่าง ${selectedAvailable}`}
           </p>
           <p className="text-xl font-bold tabular-nums">
             {selected ? money(station.rates[selected]) : money(station.starting_price)}
@@ -198,7 +210,7 @@ export function DetailPage() {
         <button
           type="button"
           className={`${primaryButtonClass} shrink-0 px-5`}
-          disabled={!selected || selectedAvailable === 0}
+          disabled={!canReserve}
           onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
         >
           เลือก

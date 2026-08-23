@@ -1,14 +1,15 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiRequestError, createReservation, getLocker } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import {
   addDays,
+  bookableDates,
+  bookableHours,
   combineLocal,
   earliestBookingDate,
   formatDateTime,
-  hourOptions,
   latestBookingDate,
   MIN_TOTAL_PRICE,
   money,
@@ -16,12 +17,14 @@ import {
   toDateInput,
   toTimeInput,
   totalPrice,
+  type TimeRange,
 } from '../lib/format'
 import { SIZES, type Size } from '../lib/types'
 import { Icon } from '../ui/icons'
 import {
   ActionBar,
   cardClass,
+  Field,
   labelClass,
   linkButtonClass,
   Page,
@@ -39,6 +42,8 @@ const DURATION_OPTIONS = Array.from({ length: 24 }, (_, index) => ({
   label: `${index + 1} ชม.`,
 }))
 
+const NO_RANGES: TimeRange[] = []
+
 function isSize(value: string | null): value is Size {
   return value === 'Small' || value === 'Medium' || value === 'Large'
 }
@@ -49,6 +54,7 @@ export function ReservePage() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const token = session?.access_token ?? ''
+  const queryClient = useQueryClient()
   const idempotencyKey = useRef(crypto.randomUUID())
 
   const startDefault = useMemo(() => nextHour(), [])
@@ -85,7 +91,23 @@ export function ReservePage() {
         state: { confirmed: true },
       })
     },
+    onError: () => {
+      idempotencyKey.current = crypto.randomUUID()
+      void queryClient.invalidateQueries({ queryKey: ['lockers', 'detail', id] })
+    },
   })
+
+  const minDate = earliestBookingDate()
+  const maxDate = latestBookingDate()
+  const ranges = locker.data?.available_time[size] ?? NO_RANGES
+  const openDates = useMemo(
+    () => bookableDates(ranges, duration, minDate, maxDate),
+    [ranges, duration, minDate, maxDate],
+  )
+  const hours = useMemo(
+    () => bookableHours(date, ranges, duration),
+    [date, ranges, duration],
+  )
 
   if (locker.isLoading) {
     return (
@@ -113,23 +135,19 @@ export function ReservePage() {
   const station = locker.data
   const rate = station.rates[size]
   const total = totalPrice(rate, duration)
-  const minDate = earliestBookingDate()
-  const maxDate = latestBookingDate()
-  const hours = hourOptions(date)
   const start = combineLocal(date, time)
   const validStart = !Number.isNaN(start.getTime()) && hours.some((option) => option.value === time)
   const end = validStart ? new Date(start.getTime() + duration * 3_600_000) : null
   const conflict = mutation.error instanceof ApiRequestError && mutation.error.status === 409
-  const sizeFull = station.available[size] === 0
-  const disabled = mutation.isPending || sizeFull || hours.length === 0 || !validStart
-
-  function onDateChange(next: string) {
-    setDate(next)
-    const nextHours = hourOptions(next)
-    if (!nextHours.some((option) => option.value === time)) {
-      setTime(nextHours[0]?.value ?? toTimeInput(nextHour()))
-    }
-  }
+  const disabled = mutation.isPending || hours.length === 0 || !validStart
+  const timeHint =
+    hours.length === 0
+      ? 'เลือกระยะสั้นลง หรือเลือกวันอื่นที่มีช่วงว่างพอ'
+      : validStart
+        ? `ชั่วโมงเริ่มที่ยังว่างพอสำหรับ ${duration} ชม.`
+        : conflict
+          ? 'เวลานี้ไม่ว่างแล้ว เลือกชั่วโมงใหม่จากรายการ'
+          : 'เลือกชั่วโมงเริ่มจากรายการ'
 
   function onConfirm() {
     setFormError(null)
@@ -187,7 +205,7 @@ export function ReservePage() {
               <p className={labelClass}>ขนาดช่อง</p>
               <div className="mt-2.5 grid min-w-0 grid-cols-3 gap-2">
                 {SIZES.map((item) => {
-                  const empty = station.available[item] === 0
+                  const empty = station.available_time[item].length === 0
                   const isSelected = size === item
                   return (
                     <button
@@ -195,17 +213,16 @@ export function ReservePage() {
                       type="button"
                       disabled={empty}
                       onClick={() => setSize(item)}
-                      className={`grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-lg border px-1 py-2 text-sm font-medium ${
-                        empty
-                          ? 'pointer-events-none border-line text-ink-faint opacity-50'
-                          : isSelected
-                            ? 'border-accent bg-accent-soft font-semibold text-accent-text ring-2 ring-accent'
-                            : 'border-line-strong bg-surface text-ink-muted hover:bg-elevated'
-                      }`}
+                      className={`grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-lg border px-1 py-2 text-sm font-medium ${empty
+                        ? 'pointer-events-none border-line text-ink-faint opacity-50'
+                        : isSelected
+                          ? 'border-accent bg-accent-soft font-semibold text-accent-text ring-2 ring-accent'
+                          : 'border-line-strong bg-surface text-ink-muted hover:bg-elevated'
+                        }`}
                     >
                       {item}
                       <small className="text-center text-[11px] leading-tight font-medium opacity-85">
-                        {empty ? 'เต็ม' : `${money(station.rates[item])}/ชม.`}
+                        {empty ? 'เต็ม 7 วัน' : `${money(station.rates[item])}/ชม.`}
                       </small>
                     </button>
                   )
@@ -214,42 +231,50 @@ export function ReservePage() {
 
               <hr className="my-4 border-line" />
 
-              <p className={labelClass}>เวลาเริ่ม</p>
-              <div className="mt-2.5 grid min-w-0 gap-3 sm:grid-cols-2">
-                <label className="block min-w-0">
-                  <span className={labelClass}>วันที่</span>
-                  <div className="mt-1.5">
-                    <DateField value={date} min={minDate} max={maxDate} onChange={onDateChange} />
-                  </div>
-                </label>
-                <label className="block min-w-0">
-                  <span className={labelClass}>เวลา</span>
-                  <div className="mt-1.5">
-                    {hours.length === 0 ? (
-                      <p className="flex min-h-11 items-center rounded-lg border border-line bg-elevated px-3 text-sm text-ink-faint">
-                        ไม่มีชั่วโมงที่เลือกได้
-                      </p>
-                    ) : (
-                      <MenuSelect variant="field" value={time} options={hours} onChange={setTime} />
-                    )}
-                  </div>
-                </label>
-              </div>
-              {hours.length === 0 ? (
-                <p className="mt-2 text-xs text-ink-muted">วันนี้ไม่มีชั่วโมงที่จองได้แล้ว เลือกวันถัดไป</p>
-              ) : null}
-
-              <label className="mt-3 block">
-                <span className={labelClass}>ระยะเวลา</span>
-                <div className="mt-1.5">
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field label="ระยะเวลา">
                   <MenuSelect
                     variant="field"
+                    ariaLabel="ระยะเวลา"
                     value={String(duration)}
                     options={DURATION_OPTIONS}
                     onChange={(next) => setDuration(Number(next))}
                   />
-                </div>
-              </label>
+                </Field>
+                <Field label="วันที่">
+                  <DateField
+                    ariaLabel="วันที่"
+                    value={date}
+                    min={minDate}
+                    max={maxDate}
+                    unavailable={(iso) => !openDates.has(iso)}
+                    onChange={setDate}
+                  />
+                </Field>
+                <Field
+                  label="เวลาเริ่ม"
+                  hint={timeHint}
+                  className="sm:col-span-2 lg:col-span-1"
+                >
+                  {hours.length === 0 ? (
+                    <p className="flex min-h-11 items-center rounded-lg border border-line bg-elevated px-3 text-sm text-ink-faint">
+                      วันนี้ถูกจองครบแล้วสำหรับ {duration} ชม.
+                    </p>
+                  ) : (
+                    <MenuSelect
+                      variant="field"
+                      ariaLabel="เวลาเริ่ม"
+                      value={validStart ? time : ''}
+                      options={
+                        validStart ? hours : [{ value: '', label: 'เลือกเวลาเริ่ม' }, ...hours]
+                      }
+                      onChange={(next) => {
+                        if (next) setTime(next)
+                      }}
+                    />
+                  )}
+                </Field>
+              </div>
             </section>
 
             {formError ? <FormError message={formError} /> : null}
@@ -257,15 +282,11 @@ export function ReservePage() {
             {mutation.isError ? (
               conflict ? (
                 <NoticeCard
-                  title="ช่วงเวลานี้ถูกจองแล้ว"
-                  message={`${size} ${formatDateTime(start.toISOString())} ถูกจองตัดหน้า`}
+                  title="ช่วงนี้ไม่ว่างแล้ว"
+                  message="เวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาใหม่"
                 >
-                  <button
-                    type="button"
-                    className={secondaryButtonClass}
-                    onClick={() => navigate(`/lockers/${station.id}`)}
-                  >
-                    ดูช่วงที่ว่าง
+                  <button type="button" className={secondaryButtonClass} onClick={() => mutation.reset()}>
+                    เลือกเวลาอื่น
                   </button>
                 </NoticeCard>
               ) : (
@@ -291,13 +312,13 @@ export function ReservePage() {
               <div className="flex justify-between gap-4">
                 <dt className="text-ink-muted">เริ่ม</dt>
                 <dd className="font-semibold tabular-nums">
-                  {validStart ? formatDateTime(start.toISOString()) : '—'}
+                  {validStart ? formatDateTime(start.toISOString()) : '-'}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-ink-muted">สิ้นสุด</dt>
                 <dd className="font-semibold tabular-nums">
-                  {end ? formatDateTime(end.toISOString()) : '—'}
+                  {end ? formatDateTime(end.toISOString()) : '-'}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">

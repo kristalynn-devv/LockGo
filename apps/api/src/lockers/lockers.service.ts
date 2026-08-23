@@ -11,6 +11,7 @@ import {
 import { MOCK_LOCATIONS, resolveOrigin } from '../locations';
 import { PricingService } from '../pricing/pricing.service';
 import {
+  freeHourRanges,
   isCompartmentFree,
   LiveReservation,
   Size,
@@ -197,36 +198,18 @@ export class LockersService {
     const result = {} as Record<Size, { start: string; end: string }[]>;
 
     for (const size of SIZES) {
-      const ofSize = station.compartments.filter((item) => item.size === size);
-      const slots: { start: Date; end: Date }[] = [];
-      const cursor = new Date(from);
-      cursor.setMinutes(0, 0, 0);
-      if (cursor < from) {
-        cursor.setHours(cursor.getHours() + 1);
-      }
-
-      while (cursor < to) {
-        const end = new Date(cursor.getTime() + 60 * 60 * 1000);
-        const free = ofSize.some((compartment) =>
-          isCompartmentFree(
-            compartment.id,
-            station.reservations,
-            cursor,
-            end,
-          ),
-        );
-        if (free) {
-          slots.push({ start: new Date(cursor), end });
-        }
-        cursor.setHours(cursor.getHours() + 1);
-      }
-
-      result[size] = mergeSlots(slots)
-        .slice(0, 3)
-        .map((slot) => ({
-          start: slot.start.toISOString(),
-          end: slot.end.toISOString(),
-        }));
+      const ofSize = station.compartments
+        .filter((item) => item.size === size)
+        .map((item) => item.id);
+      result[size] = freeHourRanges(
+        ofSize,
+        station.reservations,
+        from,
+        to,
+      ).map((slot) => ({
+        start: slot.start.toISOString(),
+        end: slot.end.toISOString(),
+      }));
     }
 
     return result;
@@ -289,20 +272,4 @@ export class LockersService {
         ),
     }));
   }
-}
-
-function mergeSlots(slots: { start: Date; end: Date }[]) {
-  if (slots.length === 0) {
-    return [];
-  }
-  const merged = [{ ...slots[0] }];
-  for (const slot of slots.slice(1)) {
-    const last = merged[merged.length - 1];
-    if (slot.start.getTime() <= last.end.getTime()) {
-      last.end = slot.end;
-    } else {
-      merged.push({ ...slot });
-    }
-  }
-  return merged;
 }

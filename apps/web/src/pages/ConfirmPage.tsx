@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { getReservation } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { formatDateTime, money, statusTone } from '../lib/format'
+import { formatDateTime, money, statusLabel, statusTone } from '../lib/format'
 import { Icon } from '../ui/icons'
 import {
   cardClass,
@@ -77,7 +77,7 @@ export function ConfirmPage() {
           {item.reservation_number}
         </p>
         <div className="mt-2.5">
-          <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+          <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
         </div>
 
         <dl className="mt-6 text-left">
@@ -92,12 +92,25 @@ export function ConfirmPage() {
         </dl>
 
         <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-          <Link to="/history" className={`${secondaryButtonClass} w-full`}>
-            ดูประวัติ
-          </Link>
-          <Link to="/" className={`${primaryButtonClass} w-full`}>
-            กลับหน้าแรก
-          </Link>
+          {confirmed ? (
+            <>
+              <Link to="/history" className={`${secondaryButtonClass} w-full`}>
+                ดูประวัติ
+              </Link>
+              <Link to="/" className={`${primaryButtonClass} w-full`}>
+                กลับหน้าแรก
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/" className={`${secondaryButtonClass} w-full`}>
+                กลับหน้าแรก
+              </Link>
+              <Link to="/history" className={`${primaryButtonClass} w-full`}>
+                ดูประวัติ
+              </Link>
+            </>
+          )}
         </div>
       </section>
 
