@@ -62,7 +62,7 @@ function alreadyPresent(error: unknown): boolean {
 }
 
 async function main() {
-  const client = postgres(dbEnv.databaseUrl, { max: 1, ssl: 'require' });
+  const client = postgres(dbEnv.databaseUrl, { max: 1, ssl: dbEnv.sslMode });
   const db = drizzle(client);
 
   try {

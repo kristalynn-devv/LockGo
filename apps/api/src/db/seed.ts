@@ -16,7 +16,7 @@ const TEST_USERS = [
 
 const STATIONS = [
   {
-    name: 'LockGo Central Station',
+    name: 'Central Station',
     address: '13 Si Lom, Bang Rak, Bangkok 10500',
     latitude: '13.729200',
     longitude: '100.529100',
@@ -25,7 +25,7 @@ const STATIONS = [
     counts: { Small: 4, Medium: 3, Large: 2 },
   },
   {
-    name: 'LockGo Siam Square',
+    name: 'Siam Square',
     address: '991 Rama I Rd, Pathum Wan, Bangkok 10330',
     latitude: '13.746000',
     longitude: '100.534000',
@@ -34,7 +34,7 @@ const STATIONS = [
     counts: { Small: 3, Medium: 3, Large: 2 },
   },
   {
-    name: 'LockGo Asok',
+    name: 'Asok',
     address: 'Asok Montri Rd, Watthana, Bangkok 10110',
     latitude: '13.737200',
     longitude: '100.560400',
@@ -43,7 +43,7 @@ const STATIONS = [
     counts: { Small: 3, Medium: 2, Large: 2 },
   },
   {
-    name: 'LockGo Mo Chit',
+    name: 'Mo Chit',
     address: 'Kamphaeng Phet 2 Rd, Chatuchak, Bangkok 10900',
     latitude: '13.802400',
     longitude: '100.553400',
@@ -52,7 +52,7 @@ const STATIONS = [
     counts: { Small: 4, Medium: 2, Large: 1 },
   },
   {
-    name: 'LockGo On Nut (Maintenance)',
+    name: 'On Nut (Maintenance)',
     address: 'Sukhumvit 77, Suan Luang, Bangkok 10250',
     latitude: '13.705600',
     longitude: '100.601000',
@@ -61,7 +61,7 @@ const STATIONS = [
     counts: { Small: 2, Medium: 2, Large: 1 },
   },
   {
-    name: 'LockGo Sala Daeng (Closed)',
+    name: 'Sala Daeng (Closed)',
     address: 'Sala Daeng, Bang Rak, Bangkok 10500',
     latitude: '13.728400',
     longitude: '100.534200',
@@ -70,7 +70,7 @@ const STATIONS = [
     counts: { Small: 2, Medium: 2, Large: 1 },
   },
   {
-    name: 'LockGo Thonglor',
+    name: 'Thonglor',
     address: 'Sukhumvit 55, Watthana, Bangkok 10110',
     latitude: '13.724000',
     longitude: '100.578000',
@@ -79,7 +79,7 @@ const STATIONS = [
     counts: { Small: 3, Medium: 0, Large: 1 },
   },
   {
-    name: 'LockGo Ari Premium',
+    name: 'Ari Premium',
     address: 'Phahonyothin Rd, Phaya Thai, Bangkok 10400',
     latitude: '13.779600',
     longitude: '100.544600',
@@ -88,7 +88,7 @@ const STATIONS = [
     counts: { Small: 2, Medium: 2, Large: 1 },
   },
   {
-    name: 'LockGo Don Mueang',
+    name: 'Don Mueang',
     address: 'Vibhavadi Rangsit Rd, Don Mueang, Bangkok 10210',
     latitude: '13.912600',
     longitude: '100.606700',
@@ -97,7 +97,7 @@ const STATIONS = [
     counts: { Small: 4, Medium: 2, Large: 1 },
   },
   {
-    name: 'LockGo National Stadium',
+    name: 'National Stadium',
     address: 'Rama I Rd, Pathum Wan, Bangkok 10330',
     latitude: '13.746500',
     longitude: '100.529000',
@@ -106,7 +106,7 @@ const STATIONS = [
     counts: { Small: 1, Medium: 0, Large: 0 },
   },
   {
-    name: 'LockGo Ekkamai',
+    name: 'Ekkamai',
     address: 'Sukhumvit 63, Watthana, Bangkok 10110',
     latitude: '13.719500',
     longitude: '100.585200',
@@ -182,10 +182,10 @@ async function compartmentId(
 async function seedScenarioReservations(sql: Sql) {
   const aliceId = await userIdByName(sql, 'Alice LockGo');
   const bobId = await userIdByName(sql, 'Bob LockGo');
-  const centralId = await stationIdByName(sql, 'LockGo Central Station');
-  const moChitId = await stationIdByName(sql, 'LockGo Mo Chit');
-  const stadiumId = await stationIdByName(sql, 'LockGo National Stadium');
-  const asokId = await stationIdByName(sql, 'LockGo Asok');
+  const centralId = await stationIdByName(sql, 'Central Station');
+  const moChitId = await stationIdByName(sql, 'Mo Chit');
+  const stadiumId = await stationIdByName(sql, 'National Stadium');
+  const asokId = await stationIdByName(sql, 'Asok');
 
   if (!aliceId || !bobId || !centralId || !moChitId || !stadiumId || !asokId) {
     console.log('seed scenarios skipped — users or stations missing');
@@ -400,7 +400,7 @@ async function seedScenarioReservations(sql: Sql) {
       ${sql.json({
         id: reservationId,
         reservation_number: 'LK-SEED-ALICE-CANCEL',
-        station_name: 'LockGo Central Station',
+        station_name: 'Central Station',
         status: 'Reserved',
       })}
     )
@@ -414,7 +414,7 @@ async function main() {
     await upsertAuthUser(user);
   }
 
-  const sql = postgres(dbEnv.databaseUrl, { max: 1, ssl: 'require' });
+  const sql = postgres(dbEnv.databaseUrl, { max: 1, ssl: dbEnv.sslMode });
 
   for (const station of STATIONS) {
     const rows = await sql<{ id: string }[]>`

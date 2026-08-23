@@ -6,7 +6,8 @@ on:
     branches: [master]
 
 jobs:
-  test:
+  # Pure functions only — no database, no secrets.
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +19,58 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @lockgo/api test -- availability.spec.ts pricing.service.spec.ts
-      - run: pnpm --filter @lockgo/api exec tsc -p tsconfig.build.json --noEmit
-      - run: pnpm --filter @lockgo/web build
+      - name: unit tests
+        run: pnpm --filter @lockgo/api test
+      - name: typecheck api
+        run: pnpm --filter @lockgo/api exec tsc -p tsconfig.build.json --noEmit
+      - name: build web
+        run: pnpm --filter @lockgo/web build
+
+  # Real Postgres + real GoTrue auth, booted by the Supabase CLI on the runner.
+  # Keys are the CLI's fixed local demo keys, so this still needs no secrets.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: start local supabase stack
+        run: |
+          # `supabase start` would apply supabase/migrations/ during boot, but
+          # that SQL depends on the drizzle tables which do not exist yet.
+          # run-migrations.ts owns the real order, so keep the hand-written SQL
+          # out of the way until the stack is up.
+          mkdir -p /tmp/hand-sql
+          mv supabase/migrations/*.sql /tmp/hand-sql/
+          supabase start
+          mv /tmp/hand-sql/*.sql supabase/migrations/
+
+      - name: point .env at the local stack
+        run: |
+          supabase status -o env \
+            | sed -e 's/^API_URL=/SUPABASE_URL=/' \
+                  -e 's/^SERVICE_ROLE_KEY=/SUPABASE_SERVICE_ROLE_KEY=/' \
+                  -e 's/^DB_URL=/DATABASE_URL=/' \
+                  -e 's/^JWT_SECRET=/SUPABASE_JWT_SECRET=/' \
+            | tr -d '"' > .env
+
+      - run: pnpm install --frozen-lockfile
+      - name: migrate
+        run: pnpm db:migrate
+      - name: seed
+        run: pnpm db:seed
+      - name: api e2e tests
+        run: pnpm --filter @lockgo/api test:e2e -- --runInBand
+
+      - name: stack logs on failure
+        if: failure()
+        run: supabase status || true

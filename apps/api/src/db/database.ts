@@ -8,7 +8,7 @@ let db: PostgresJsDatabase<typeof schema> | undefined;
 
 export function getSql() {
   if (!sql) {
-    sql = postgres(dbEnv.databaseUrl, { max: 4, ssl: 'require' });
+    sql = postgres(dbEnv.databaseUrl, { max: 4, ssl: dbEnv.sslMode });
   }
   return sql;
 }
