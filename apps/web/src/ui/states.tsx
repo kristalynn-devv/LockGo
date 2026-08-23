@@ -1,27 +1,81 @@
-export function Skeleton({ className = 'h-24' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-slate-100 ${className}`} />
+import type { ReactNode } from 'react'
+import { Icon, type IconName } from './icons'
+import { cardClass, cardGridClass, primaryButtonClass, secondaryButtonClass } from './Page'
+
+/** โครงกระดูกที่มีสัดส่วนเหมือนการ์ดจริง — ไม่ใช่กล่องเทาลอย ๆ */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`${cardClass} p-4 ${className}`}>
+      <div className="flex items-center gap-3">
+        <div className="shimmer h-4 w-1/2 rounded bg-elevated" />
+        <div className="shimmer ml-auto h-5 w-14 rounded-full bg-elevated" />
+      </div>
+      <div className="shimmer mt-3 h-3 w-3/4 rounded bg-elevated" />
+      <div className="mt-4 flex gap-1.5">
+        <div className="shimmer h-6 w-12 rounded-full bg-elevated" />
+        <div className="shimmer h-6 w-12 rounded-full bg-elevated" />
+        <div className="shimmer h-6 w-12 rounded-full bg-elevated" />
+      </div>
+      <div className="mt-5 flex items-center">
+        <div className="shimmer h-6 w-16 rounded bg-elevated" />
+        <div className="shimmer ml-auto h-3.5 w-14 rounded bg-elevated" />
+      </div>
+    </div>
+  )
 }
 
+export function SkeletonList({ count = 3 }: { count?: number }) {
+  return (
+    <div className={cardGridClass}>
+      {Array.from({ length: count }, (_, index) => (
+        <Skeleton key={index} />
+      ))}
+    </div>
+  )
+}
+
+/** ว่างเปล่า = บอกทางออก ไม่ใช่แค่บอกว่าไม่เจอ */
 export function EmptyState({
   message,
+  hint,
+  icon = 'inbox',
   actionLabel,
   onAction,
+  secondaryLabel,
+  onSecondary,
 }: {
   message: string
+  hint?: string
+  icon?: IconName
   actionLabel?: string
   onAction?: () => void
+  secondaryLabel?: string
+  onSecondary?: () => void
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center">
-      <p className="text-sm text-slate-600">{message}</p>
-      {actionLabel && onAction ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="mt-3 text-sm font-medium text-indigo-600"
-        >
-          {actionLabel}
-        </button>
+    <div className={`${cardClass} px-5 py-9 text-center`}>
+      <div className="mx-auto grid size-[72px] place-items-center rounded-[20px] bg-accent-soft text-accent-text">
+        <Icon name={icon} className="size-[30px]" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold">{message}</h3>
+      {hint ? <p className="mt-2 text-sm text-ink-muted">{hint}</p> : null}
+      {actionLabel || secondaryLabel ? (
+        <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+          {secondaryLabel && onSecondary ? (
+            <button type="button" className={secondaryButtonClass} onClick={onSecondary}>
+              {secondaryLabel}
+            </button>
+          ) : null}
+          {actionLabel && onAction ? (
+            <button
+              type="button"
+              className={`${primaryButtonClass} w-auto px-5`}
+              onClick={onAction}
+            >
+              {actionLabel}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )
@@ -29,37 +83,66 @@ export function EmptyState({
 
 export function ErrorState({
   message,
+  hint,
   onRetry,
+  children,
 }: {
   message: string
+  hint?: string
   onRetry?: () => void
+  children?: ReactNode
 }) {
   return (
-    <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
-      <p className="text-sm text-rose-700">{message}</p>
+    <div className={`${cardClass} border-danger/40 bg-danger-soft/60 px-5 py-8 text-center`}>
+      <div className="mx-auto grid size-14 place-items-center rounded-full bg-danger-soft text-danger">
+        <Icon name="offline" className="size-6" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold">{message}</h3>
+      {hint ? <p className="mt-2 text-sm text-ink-muted">{hint}</p> : null}
       {onRetry ? (
         <button
           type="button"
+          className={`${primaryButtonClass} mt-5 w-auto px-6`}
           onClick={onRetry}
-          className="mt-2 text-sm font-medium text-rose-700 underline"
         >
           ลองใหม่
         </button>
       ) : null}
+      {children}
     </div>
   )
 }
 
-export function Badge({
+/** เตือนแบบไม่น่ากลัว — ใช้ตอนจองชนกัน (409) */
+export function NoticeCard({
+  title,
+  message,
   children,
-  tone,
 }: {
-  children: string
-  tone: string
+  title: string
+  message?: string
+  children?: ReactNode
 }) {
   return (
+    <div className={`${cardClass} border-warn/50 p-4`}>
+      <div className="flex items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-warn-soft text-warn">
+          <Icon name="alert" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold">{title}</h3>
+          {message ? <p className="mt-1 text-sm text-ink-muted">{message}</p> : null}
+        </div>
+      </div>
+      {children ? <div className="mt-3.5 flex flex-wrap gap-2.5">{children}</div> : null}
+    </div>
+  )
+}
+
+export function Badge({ children, tone }: { children: ReactNode; tone: string }) {
+  return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold whitespace-nowrap ${tone}`}
     >
       {children}
     </span>

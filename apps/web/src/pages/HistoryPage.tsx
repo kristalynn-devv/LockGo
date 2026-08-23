@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { ApiRequestError, cancelReservation, listReservations } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { formatTimeRange, money, statusTone } from '../lib/format'
-import { Page, secondaryButtonClass } from '../ui/Page'
-import { Badge, EmptyState, ErrorState, Skeleton } from '../ui/states'
+import { Icon } from '../ui/icons'
+import { cardClass, cardGridClass, Page, secondaryButtonClass } from '../ui/Page'
+import { Badge, EmptyState, ErrorState, SkeletonList } from '../ui/states'
 
 export function HistoryPage() {
   const { session } = useAuth()
@@ -28,10 +29,7 @@ export function HistoryPage() {
   if (history.isLoading) {
     return (
       <Page title="ประวัติการจอง" wide>
-        <div className="space-y-3">
-          <Skeleton />
-          <Skeleton />
-        </div>
+        <SkeletonList count={3} />
       </Page>
     )
   }
@@ -39,7 +37,11 @@ export function HistoryPage() {
   if (history.isError) {
     return (
       <Page title="ประวัติการจอง" wide>
-        <ErrorState message="โหลดประวัติไม่สำเร็จ" onRetry={() => void history.refetch()} />
+        <ErrorState
+          message="โหลดประวัติไม่สำเร็จ"
+          hint="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"
+          onRetry={() => void history.refetch()}
+        />
       </Page>
     )
   }
@@ -61,49 +63,52 @@ export function HistoryPage() {
       ) : null}
 
       {items.length === 0 ? (
-        <EmptyState message="ยังไม่มีประวัติการจอง" />
+        <EmptyState message="ยังไม่มีประวัติการจอง" hint="เริ่มจากค้นหาตู้ใกล้ตัวได้เลย" />
       ) : (
-        <div className="space-y-3">
+        <div className={cardGridClass}>
           {items.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {item.reservation_number}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {item.station_name} · {item.size}
-                  </p>
-                </div>
-                <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+            <article key={item.id} className={`${cardClass} min-w-0 p-4`}>
+              <div>
+                <p className="text-base font-semibold tabular-nums">
+                  {item.reservation_number}
+                </p>
+                <p className="text-sm text-ink-muted">
+                  {item.size} · {item.compartment_label}
+                </p>
               </div>
-              <p className="mt-2 text-sm text-slate-600">{item.address}</p>
-              <p className="mt-1 text-sm text-slate-600">
+
+              <div className="mt-2">
+                <p className="truncate text-sm text-ink-muted">{item.station_name}</p>
+                <p className="truncate text-sm text-ink-muted">{item.address}</p>
+              </div>
+
+              <p className="mt-1 text-sm text-ink-muted tabular-nums">
                 {formatTimeRange(item.start_time, item.end_time)}
               </p>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-xl font-bold text-slate-900">{money(item.total_price)}</p>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/reservations/${item.id}`}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-indigo-600"
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-xl font-bold tabular-nums">{money(item.total_price)}</p>
+                <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                <Link
+                  to={`/reservations/${item.id}`}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-ctl px-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-soft"
+                >
+                  รายละเอียด
+                  <Icon name="arrow" className="size-[15px]" />
+                </Link>
+                {item.status === 'Reserved' ? (
+                  <button
+                    type="button"
+                    className={`${secondaryButtonClass} min-h-10 px-3.5 text-sm`}
+                    disabled={cancel.isPending}
+                    onClick={() => cancel.mutate(item.id)}
                   >
-                    ดูรายละเอียด
-                  </Link>
-                  {item.status === 'Reserved' ? (
-                    <button
-                      type="button"
-                      className={secondaryButtonClass}
-                      disabled={cancel.isPending}
-                      onClick={() => cancel.mutate(item.id)}
-                    >
-                      ยกเลิก
-                    </button>
-                  ) : null}
-                </div>
+                    ยกเลิก
+                  </button>
+                ) : null}
               </div>
             </article>
           ))}

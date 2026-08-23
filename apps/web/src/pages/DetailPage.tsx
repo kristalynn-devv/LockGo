@@ -1,16 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getLocker } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import {
-  availabilityTone,
-  formatTimeRange,
-  money,
-  statusTone,
-} from '../lib/format'
+import { availabilityTone, formatTimeRange, money, statusTone } from '../lib/format'
 import { SIZES, type Size } from '../lib/types'
-import { Page, primaryButtonClass } from '../ui/Page'
+import { Icon } from '../ui/icons'
+import {
+  ActionBar,
+  cardClass,
+  labelClass,
+  linkButtonClass,
+  Page,
+  primaryButtonClass,
+  splitGridClass,
+  SplitLayout,
+} from '../ui/Page'
 import { Badge, EmptyState, ErrorState, Skeleton } from '../ui/states'
 
 export function DetailPage() {
@@ -28,103 +33,201 @@ export function DetailPage() {
 
   if (locker.isLoading) {
     return (
-      <Page>
-        <Skeleton className="h-64" />
+      <Page wide>
+        <div className={splitGridClass}>
+          <Skeleton className="lg:col-span-8" />
+          <Skeleton className="lg:col-span-4" />
+        </div>
       </Page>
     )
   }
 
   if (locker.isError) {
     return (
-      <Page title="รายละเอียดตู้">
-        <ErrorState message="โหลดรายละเอียดตู้ไม่สำเร็จ" onRetry={() => void locker.refetch()} />
+      <Page title="รายละเอียดตู้" wide>
+        <ErrorState
+          message="โหลดรายละเอียดตู้ไม่สำเร็จ"
+          hint="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"
+          onRetry={() => void locker.refetch()}
+        />
       </Page>
     )
   }
 
   if (!locker.data) {
     return (
-      <Page title="รายละเอียดตู้">
-        <EmptyState message="ไม่พบตู้ที่ต้องการ" actionLabel="กลับไปค้นหา" onAction={() => navigate('/')} />
+      <Page title="รายละเอียดตู้" wide>
+        <EmptyState
+          message="ไม่พบตู้ที่ต้องการ"
+          actionLabel="กลับไปค้นหา"
+          onAction={() => navigate('/')}
+        />
       </Page>
     )
   }
 
   const station = locker.data
-  const selectedAvailable = size ? station.available[size] : 0
+  const selected = size ?? SIZES.find((item) => station.available[item] > 0) ?? null
+  const selectedAvailable = selected ? station.available[selected] : 0
 
   return (
-    <Page>
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">{station.name}</h1>
-          <Badge tone={statusTone(station.status)}>
-            {station.status === 'Open' ? 'เปิด' : station.status}
-          </Badge>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">{station.address}</p>
-        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-          เวลาทำการ
-        </p>
-        <p className="text-sm text-slate-600">{station.operating_hours}</p>
-      </div>
-
-      <div className="mt-4 space-y-3">
-        {SIZES.map((item) => {
-          const count = station.available[item]
-          const disabled = count === 0
-          const selected = size === item
-          return (
-            <button
-              key={item}
-              type="button"
-              disabled={disabled}
-              onClick={() => setSize(item)}
-              className={`w-full rounded-lg border bg-white p-4 text-left shadow-sm transition-colors ${
-                disabled
-                  ? 'pointer-events-none border-slate-200 opacity-50'
-                  : selected
-                    ? 'border-indigo-600 ring-2 ring-indigo-600'
-                    : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-semibold text-slate-900">{item}</p>
-                <Badge tone={availabilityTone(count)}>{`ว่าง ${count}`}</Badge>
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                {money(station.rates[item])} / ชม.
-              </p>
-              <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                Available Time
-              </p>
-              <ul className="mt-1 space-y-1 text-sm text-slate-600">
-                {station.available_time[item].length === 0 ? (
-                  <li>ไม่มีช่วงว่างใน 7 วัน</li>
-                ) : (
-                  station.available_time[item].map((slot) => (
-                    <li key={`${slot.start}-${slot.end}`}>
-                      {formatTimeRange(slot.start, slot.end)}
-                    </li>
-                  ))
-                )}
-              </ul>
-            </button>
-          )
-        })}
-      </div>
-
-      <button
-        type="button"
-        className={`${primaryButtonClass} mt-6`}
-        disabled={!size || selectedAvailable === 0}
-        onClick={() => navigate(`/lockers/${station.id}/reserve?size=${size}`)}
-      >
-        เลือกขนาดนี้
+    <Page wide>
+      <button type="button" className={`${linkButtonClass} -ml-1.5`} onClick={() => navigate('/')}>
+        <Icon name="back" className="size-[15px]" />
+        ค้นหา
       </button>
-      <Link to="/" className="mt-3 block text-center text-sm font-medium text-indigo-600">
-        กลับไปค้นหา
-      </Link>
+
+      <div className="mt-2">
+        <SplitLayout
+          main={
+            <div className="grid gap-3">
+              <section className={`${cardClass} rise p-4`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h1 className="text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
+                      {station.name}
+                    </h1>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
+                      <Icon name="pin" className="size-[15px]" />
+                      {station.address}
+                    </p>
+                  </div>
+                  <Badge tone={statusTone(station.status)}>
+                    {station.status === 'Open' ? 'เปิด' : station.status}
+                  </Badge>
+                </div>
+
+                <hr className="my-4 border-line" />
+
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-elevated text-ink-muted">
+                      <Icon name="clock" />
+                    </span>
+                    <div>
+                      <dt className={labelClass}>เวลาทำการ</dt>
+                      <dd className="text-sm text-ink-muted">{station.operating_hours}</dd>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-elevated text-ink-muted">
+                      <Icon name="pin" />
+                    </span>
+                    <div>
+                      <dt className={labelClass}>ที่อยู่</dt>
+                      <dd className="truncate text-sm text-ink-muted">{station.address}</dd>
+                    </div>
+                  </div>
+                </dl>
+              </section>
+
+              {selected ? (
+                <section className={`${cardClass} p-4`}>
+                  <p className={labelClass}>ช่วงที่ว่าง · {selected}</p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {station.available_time[selected].length === 0 ? (
+                      <p className="text-sm text-ink-muted">ไม่มีช่วงว่างใน 7 วัน</p>
+                    ) : (
+                      station.available_time[selected].map((slot) => (
+                        <span
+                          key={`${slot.start}-${slot.end}`}
+                          className="rounded-full border border-line bg-elevated px-3 py-1.5 text-xs text-ink-muted tabular-nums"
+                        >
+                          {formatTimeRange(slot.start, slot.end)}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </section>
+              ) : null}
+            </div>
+          }
+          aside={
+            <div className={`${cardClass} p-4`}>
+              <p className={labelClass}>ขนาดช่อง</p>
+
+              <div className="mt-2.5 grid gap-2.5">
+                {SIZES.map((item) => {
+                  const count = station.available[item]
+                  const disabled = count === 0
+                  const isSelected = selected === item
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setSize(item)}
+                      className={`relative w-full rounded-lg border p-3.5 text-left ${
+                        disabled
+                          ? 'pointer-events-none border-line opacity-50'
+                          : isSelected
+                            ? 'border-accent bg-surface'
+                            : 'border-line bg-surface hover:bg-elevated'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-elevated text-ink-muted">
+                          <Icon name="box" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <b className="text-sm font-semibold">{item}</b>
+                            <Badge tone={availabilityTone(count)}>
+                              {count === 0 ? 'เต็ม' : `ว่าง ${count}`}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-ink-muted">
+                            {money(station.rates[item])} / ชม.
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <hr className="my-4 border-line" />
+
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-ink-muted">เริ่มต้น</span>
+                <span className="text-xl font-bold tabular-nums">
+                  {money(station.starting_price)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className={`${primaryButtonClass} mt-3.5 hidden lg:inline-flex`}
+                disabled={!selected || selectedAvailable === 0}
+                onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
+              >
+                เลือกขนาดนี้
+                <Icon name="arrow" className="size-[15px]" />
+              </button>
+            </div>
+          }
+        />
+      </div>
+
+      <ActionBar>
+        <div className="min-w-0 flex-1">
+          <p className={labelClass}>
+            {selected ?? '—'} · {selectedAvailable === 0 ? 'เต็ม' : `ว่าง ${selectedAvailable}`}
+          </p>
+          <p className="text-xl font-bold tabular-nums">
+            {selected ? money(station.rates[selected]) : money(station.starting_price)}
+            <span className="ml-1 text-xs font-medium text-ink-muted">/ ชม.</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`${primaryButtonClass} w-auto px-5`}
+          disabled={!selected || selectedAvailable === 0}
+          onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
+        >
+          เลือก
+        </button>
+      </ActionBar>
     </Page>
   )
 }

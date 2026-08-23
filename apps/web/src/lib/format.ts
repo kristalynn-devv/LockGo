@@ -74,17 +74,17 @@ export function shortSize(size: Size): string {
 }
 
 export function availabilityTone(count: number): string {
-  if (count === 0) return 'bg-rose-50 text-rose-700'
-  if (count <= 2) return 'bg-amber-50 text-amber-700'
-  return 'bg-emerald-50 text-emerald-700'
+  if (count === 0) return 'bg-elevated text-ink-faint'
+  if (count <= 2) return 'bg-warn-soft text-warn'
+  return 'bg-ok-soft text-ok'
 }
 
 export function statusTone(status: string): string {
-  if (status === 'Reserved') return 'bg-indigo-50 text-indigo-700'
-  if (status === 'Active' || status === 'Open') return 'bg-emerald-50 text-emerald-700'
-  if (status === 'Expired') return 'bg-rose-50 text-rose-700'
-  if (status === 'Maintenance') return 'bg-amber-50 text-amber-700'
-  return 'bg-slate-100 text-slate-600'
+  if (status === 'Reserved') return 'bg-accent-soft text-accent-text'
+  if (status === 'Active' || status === 'Open') return 'bg-ok-soft text-ok'
+  if (status === 'Expired' || status === 'Cancelled') return 'bg-danger-soft text-danger'
+  if (status === 'Maintenance') return 'bg-warn-soft text-warn'
+  return 'bg-elevated text-ink-muted'
 }
 
 export function authErrorMessage(message: string): string {

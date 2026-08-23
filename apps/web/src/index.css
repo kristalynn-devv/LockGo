@@ -1,9 +1,173 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: Inter, "Noto Sans Thai", system-ui, sans-serif;
+/* dark mode = data-theme บน <html> (ตั้งค่าโดย ThemeProvider) */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* --------------------------------------------------------------------------
+   Design tokens — สีทั้งแอปอยู่ที่นี่ที่เดียว สลับธีมด้วยการเปลี่ยนค่าตัวแปร
+   ทุกคู่สีผ่าน WCAG AA (ต่ำสุด light 4.76:1 / dark 5.21:1)
+   -------------------------------------------------------------------------- */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --canvas: #f6f7fa;
+    --surface: #ffffff;
+    --elevated: #f1f3f8;
+    --line: #e5e8f0;
+    --line-strong: #d2d7e3;
+
+    --ink: #0f1219;
+    --ink-muted: #525a6c;
+    --ink-faint: #666e7f;
+
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-ink: #ffffff;
+    --accent-text: #443ada;
+    --accent-soft: #eef0fe;
+    --accent-line: #c9ccfb;
+    --accent-panel: #4338ca;
+    --accent-panel-ink: #ffffff;
+
+    --ok: #0a7a5c;
+    --ok-soft: #e6f6f0;
+    --warn: #8a5a00;
+    --warn-soft: #fdf3e2;
+    --danger: #c2264a;
+    --danger-soft: #fdebef;
+
+    --sh-card: 0 1px 2px rgb(15 18 25 / 0.05), 0 4px 12px -6px rgb(15 18 25 / 0.14);
+    --sh-lift: 0 2px 6px rgb(15 18 25 / 0.07), 0 18px 34px -18px rgb(15 18 25 / 0.34);
+    --sh-glow: 0 8px 20px -9px rgb(79 70 229 / 0.55);
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    --canvas: #0b0c11;
+    --surface: #14161e;
+    --elevated: #1a1d27;
+    --line: #252938;
+    --line-strong: #394052;
+
+    --ink: #f2f4f9;
+    --ink-muted: #a4abbb;
+    --ink-faint: #828a9b;
+
+    --accent: #8b8cfa;
+    --accent-hover: #a1a2fc;
+    --accent-ink: #101223;
+    --accent-text: #aeb0ff;
+    --accent-soft: #1c1f38;
+    --accent-line: #343a63;
+    --accent-panel: #211c52;
+    --accent-panel-ink: #e9e8ff;
+
+    --ok: #4ade9b;
+    --ok-soft: #0e2a22;
+    --warn: #fbbf4b;
+    --warn-soft: #2b2210;
+    --danger: #ff8fa0;
+    --danger-soft: #2f1620;
+
+    /* บนพื้นเข้มเงาแทบไม่ทำงาน → ยกระดับด้วยพื้นสว่างขึ้น + เส้นขอบแทน */
+    --sh-card: 0 1px 2px rgb(0 0 0 / 0.6);
+    --sh-lift: 0 2px 8px rgb(0 0 0 / 0.65), 0 20px 40px -22px rgb(0 0 0 / 1);
+    --sh-glow: none;
+  }
+
+  body {
+    @apply min-h-svh bg-canvas font-sans text-ink antialiased;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
 }
 
-body {
-  @apply min-h-svh bg-slate-50 font-sans text-slate-900;
+/* inline = ให้ utility อ่านค่า var ตอนรัน ธีมถึงจะสลับได้โดยไม่ต้องเขียน dark: ซ้ำ */
+@theme inline {
+  --font-sans: Inter, "Noto Sans Thai", system-ui, sans-serif;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-panel: var(--accent-panel);
+  --color-accent-panel-ink: var(--accent-panel-ink);
+
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --radius-card: 14px;
+  --radius-ctl: 10px;
+
+  --shadow-card: var(--sh-card);
+  --shadow-lift: var(--sh-lift);
+  --shadow-glow: var(--sh-glow);
+}
+
+@layer utilities {
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--surface) 85%, transparent),
+      transparent
+    );
+    animation: lg-shimmer 1.5s infinite;
+  }
+
+  .rise {
+    animation: lg-rise 0.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer::after,
+    .rise {
+      animation: none;
+    }
+  }
+}
+
+@keyframes lg-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes lg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -1,11 +1,12 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiRequestError, createReservation, getLocker } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import {
   addDays,
   combineLocal,
+  formatDateTime,
   MIN_TOTAL_PRICE,
   money,
   nextHour,
@@ -14,8 +15,20 @@ import {
   totalPrice,
 } from '../lib/format'
 import { SIZES, type Size } from '../lib/types'
-import { fieldClass, Page, primaryButtonClass } from '../ui/Page'
-import { ErrorState, Skeleton } from '../ui/states'
+import { Icon } from '../ui/icons'
+import {
+  ActionBar,
+  cardClass,
+  fieldClass,
+  labelClass,
+  linkButtonClass,
+  Page,
+  primaryButtonClass,
+  secondaryButtonClass,
+  splitGridClass,
+  SplitLayout,
+} from '../ui/Page'
+import { ErrorState, NoticeCard, Skeleton } from '../ui/states'
 
 function isSize(value: string | null): value is Size {
   return value === 'Small' || value === 'Medium' || value === 'Large'
@@ -64,16 +77,23 @@ export function ReservePage() {
 
   if (locker.isLoading) {
     return (
-      <Page title="จองตู้">
-        <Skeleton className="h-64" />
+      <Page title="จองตู้" wide>
+        <div className={splitGridClass}>
+          <Skeleton className="lg:col-span-8" />
+          <Skeleton className="lg:col-span-4" />
+        </div>
       </Page>
     )
   }
 
   if (locker.isError || !locker.data) {
     return (
-      <Page title="จองตู้">
-        <ErrorState message="โหลดข้อมูลตู้ไม่สำเร็จ" onRetry={() => void locker.refetch()} />
+      <Page title="จองตู้" wide>
+        <ErrorState
+          message="โหลดข้อมูลตู้ไม่สำเร็จ"
+          hint="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"
+          onRetry={() => void locker.refetch()}
+        />
       </Page>
     )
   }
@@ -83,13 +103,15 @@ export function ReservePage() {
   const total = totalPrice(rate, duration)
   const minDate = toDateInput(new Date())
   const maxDate = toDateInput(addDays(new Date(), 7))
-  const conflict =
-    mutation.error instanceof ApiRequestError && mutation.error.status === 409
+  const start = combineLocal(date, time)
+  const validStart = !Number.isNaN(start.getTime())
+  const end = validStart ? new Date(start.getTime() + duration * 3_600_000) : null
+  const conflict = mutation.error instanceof ApiRequestError && mutation.error.status === 409
+  const disabled = mutation.isPending || station.available[size] === 0
 
   function onConfirm() {
     setFormError(null)
-    const start = combineLocal(date, time)
-    if (Number.isNaN(start.getTime())) {
+    if (!validStart) {
       setFormError('กรุณาเลือกวันและเวลาให้ถูกต้อง')
       return
     }
@@ -105,123 +127,206 @@ export function ReservePage() {
   }
 
   return (
-    <Page title="จองตู้">
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h2 className="text-lg font-semibold text-slate-900">{station.name}</h2>
-        <p className="mt-1 text-sm text-slate-600">{station.address}</p>
-      </div>
-
-      <p className="mt-6 text-xs font-medium uppercase tracking-wide text-slate-500">
-        เลือกขนาด
-      </p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        {SIZES.map((item) => {
-          const empty = station.available[item] === 0
-          return (
-            <button
-              key={item}
-              type="button"
-              disabled={empty}
-              onClick={() => setSize(item)}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                empty
-                  ? 'pointer-events-none border-slate-200 text-slate-400 opacity-50'
-                  : size === item
-                    ? 'border-indigo-600 text-indigo-700 ring-2 ring-indigo-600'
-                    : 'border-slate-300 bg-white text-slate-700'
-              }`}
-            >
-              {item}
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <label>
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">วันที่</span>
-          <input
-            className={`${fieldClass} mt-1`}
-            type="date"
-            min={minDate}
-            max={maxDate}
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
-        </label>
-        <label>
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">เวลาเริ่ม</span>
-          <input
-            className={`${fieldClass} mt-1`}
-            type="time"
-            step={3600}
-            value={time}
-            onChange={(event) => setTime(event.target.value)}
-          />
-        </label>
-      </div>
-
-      <label className="mt-3 block">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">ระยะเวลา</span>
-        <select
-          className={`${fieldClass} mt-1`}
-          value={duration}
-          onChange={(event) => setDuration(Number(event.target.value))}
-        >
-          {Array.from({ length: 24 }, (_, index) => index + 1).map((hours) => (
-            <option key={hours} value={hours}>
-              {hours} ชม.
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="mt-6 border-t border-slate-200 pt-4">
-        <div className="flex justify-between text-sm text-slate-600">
-          <span>ราคา</span>
-          <span>
-            {money(rate)} × {duration} ชม.
-          </span>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <span className="text-sm text-slate-600">รวม</span>
-          <span className="text-xl font-bold text-slate-900">{money(total)}</span>
-        </div>
-        {rate * duration < MIN_TOTAL_PRICE ? (
-          <p className="mt-1 text-xs text-slate-400">คิดขั้นต่ำ ฿30</p>
-        ) : null}
-      </div>
-
-      {formError ? <div className="mt-4"><ErrorState message={formError} /></div> : null}
-
-      {mutation.isError ? (
-        <div className="mt-4">
-          <ErrorState
-            message={
-              mutation.error instanceof ApiRequestError
-                ? mutation.error.message
-                : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
-            }
-          />
-          {conflict ? (
-            <Link
-              to={`/lockers/${station.id}`}
-              className="mt-2 inline-block text-sm font-medium text-indigo-600"
-            >
-              เลือกเวลาหรือขนาดใหม่
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
-
+    <Page wide>
       <button
         type="button"
-        className={`${primaryButtonClass} mt-6`}
-        disabled={mutation.isPending || station.available[size] === 0}
-        onClick={onConfirm}
+        className={`${linkButtonClass} -ml-1.5`}
+        onClick={() => navigate(`/lockers/${station.id}`)}
       >
-        {mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยันการจอง'}
+        <Icon name="back" className="size-[15px]" />
+        ย้อนกลับ
       </button>
+      <h1 className="mt-1.5 mb-4 text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
+        จองตู้
+      </h1>
+
+      <SplitLayout
+        main={
+          <div className="grid gap-3">
+            <section className={`${cardClass} bg-elevated p-4`}>
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-accent text-accent-ink">
+                  <Icon name="lock" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-semibold">{station.name}</h2>
+                  <p className="truncate text-sm text-ink-muted">{station.address}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className={`${cardClass} p-4`}>
+              <p className={labelClass}>ขนาดช่อง</p>
+              <div className="mt-2.5 grid grid-cols-3 gap-2">
+                {SIZES.map((item) => {
+                  const empty = station.available[item] === 0
+                  const isSelected = size === item
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      disabled={empty}
+                      onClick={() => setSize(item)}
+                      className={`grid min-h-11 justify-items-center gap-0.5 rounded-lg border px-2 py-2 text-sm font-medium ${
+                        empty
+                          ? 'pointer-events-none border-line text-ink-faint opacity-50'
+                          : isSelected
+                            ? 'border-accent bg-surface font-semibold text-accent-text'
+                            : 'border-line-strong bg-surface text-ink-muted hover:bg-elevated'
+                      }`}
+                    >
+                      {item}
+                      <small className="text-[11px] font-medium opacity-85">
+                        {empty ? 'เต็ม' : `${money(station.rates[item])} / ชม.`}
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <hr className="my-4 border-line" />
+
+              <p className={labelClass}>เวลาเริ่ม</p>
+              <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className={labelClass}>วันที่</span>
+                  <input
+                    className={`${fieldClass} mt-1.5`}
+                    type="date"
+                    min={minDate}
+                    max={maxDate}
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className={labelClass}>เวลา</span>
+                  <input
+                    className={`${fieldClass} mt-1.5`}
+                    type="time"
+                    step={3600}
+                    value={time}
+                    onChange={(event) => setTime(event.target.value)}
+                  />
+                </label>
+              </div>
+
+              <label className="mt-3 block">
+                <span className={labelClass}>ระยะเวลา</span>
+                <div className="relative mt-1.5">
+                  <select
+                    className={`${fieldClass} cursor-pointer appearance-none pr-9`}
+                    value={duration}
+                    onChange={(event) => setDuration(Number(event.target.value))}
+                  >
+                    {Array.from({ length: 24 }, (_, index) => index + 1).map((hours) => (
+                      <option key={hours} value={hours}>
+                        {hours} ชม.
+                      </option>
+                    ))}
+                  </select>
+                  <Icon
+                    name="chevron"
+                    className="pointer-events-none absolute top-1/2 right-3 size-[15px] -translate-y-1/2 text-ink-faint"
+                  />
+                </div>
+              </label>
+            </section>
+
+            {formError ? <ErrorState message={formError} /> : null}
+
+            {mutation.isError ? (
+              conflict ? (
+                <NoticeCard
+                  title="ช่วงเวลานี้ถูกจองแล้ว"
+                  message={`${size} ${formatDateTime(start.toISOString())} ถูกจองตัดหน้า`}
+                >
+                  <button
+                    type="button"
+                    className={secondaryButtonClass}
+                    onClick={() => navigate(`/lockers/${station.id}`)}
+                  >
+                    ดูช่วงที่ว่าง
+                  </button>
+                </NoticeCard>
+              ) : (
+                <ErrorState
+                  message={
+                    mutation.error instanceof ApiRequestError
+                      ? mutation.error.message
+                      : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+                  }
+                />
+              )
+            ) : null}
+          </div>
+        }
+        aside={
+          <div className={`${cardClass} p-4`}>
+            <p className={labelClass}>สรุป</p>
+            <dl className="mt-3 grid gap-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-muted">ขนาด</dt>
+                <dd className="font-semibold">{size}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-muted">เริ่ม</dt>
+                <dd className="font-semibold tabular-nums">
+                  {validStart ? formatDateTime(start.toISOString()) : '—'}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-muted">สิ้นสุด</dt>
+                <dd className="font-semibold tabular-nums">
+                  {end ? formatDateTime(end.toISOString()) : '—'}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-muted">อัตรา</dt>
+                <dd className="font-semibold tabular-nums">
+                  {money(rate)} × {duration}
+                </dd>
+              </div>
+            </dl>
+
+            <hr className="my-4 border-line" />
+
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm text-ink-muted">รวม</span>
+              <span className="text-xl font-bold tabular-nums">{money(total)}</span>
+            </div>
+            {rate * duration < MIN_TOTAL_PRICE ? (
+              <p className="mt-1 text-xs text-ink-faint">คิดขั้นต่ำ {money(MIN_TOTAL_PRICE)}</p>
+            ) : null}
+
+            <button
+              type="button"
+              className={`${primaryButtonClass} mt-3.5 hidden lg:inline-flex`}
+              disabled={disabled}
+              onClick={onConfirm}
+            >
+              {mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยันการจอง'}
+            </button>
+          </div>
+        }
+      />
+
+      <ActionBar>
+        <div className="min-w-0 flex-1">
+          <p className={labelClass}>
+            {size} · {duration} ชม.
+          </p>
+          <p className="text-xl font-bold tabular-nums">{money(total)}</p>
+        </div>
+        <button
+          type="button"
+          className={`${primaryButtonClass} w-auto px-5`}
+          disabled={disabled}
+          onClick={onConfirm}
+        >
+          {mutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยัน'}
+        </button>
+      </ActionBar>
     </Page>
   )
 }
