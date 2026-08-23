@@ -323,4 +323,151 @@ describe('Reservations concurrency (e2e)', () => {
     expect(got.body.status).toBe('Expired');
     expect(got.body.status).not.toBe('Active');
   });
+
+  it('opens the locker to deposit then pick up', async () => {
+    const startTime = futureHour(98);
+    const created = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `payfirst-alice-${startTime}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: startTime,
+        duration_hours: 2,
+      })
+      .expect(201);
+
+    expect(created.body.access_code).toBeNull();
+    expect(created.body.paid).toBe(false);
+    expect(created.body.status).toBe('Reserved');
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/deposit`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_DEPOSIT');
+      });
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pay`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .send({ method: 'promptpay' })
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('FORBIDDEN');
+      });
+
+    const paid = await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pay`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ method: 'promptpay' })
+      .expect(200);
+
+    expect(paid.body.paid).toBe(true);
+    expect(paid.body.access_code).toMatch(/^\d{6}$/);
+
+    const sql = getSql();
+    const txns = await sql<{ amount: string; method: string; status: string }[]>`
+      SELECT amount, method, status
+      FROM payments
+      WHERE reservation_id = ${created.body.id}::uuid
+    `;
+    expect(txns).toHaveLength(1);
+    expect(txns[0].method).toBe('promptpay');
+    expect(txns[0].status).toBe('completed');
+    expect(Number(txns[0].amount)).toBe(paid.body.total_price);
+
+    const paidAgain = await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pay`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ method: 'card' })
+      .expect(200);
+
+    expect(paidAgain.body.access_code).toBe(paid.body.access_code);
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/deposit`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('FORBIDDEN');
+      });
+
+    const deposited = await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/deposit`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    expect(deposited.body.status).toBe('Active');
+    expect(deposited.body.access_code).toBe(paid.body.access_code);
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/deposit`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_DEPOSIT');
+      });
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pickup`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(403);
+
+    const pickedUp = await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pickup`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    expect(pickedUp.body.status).toBe('Completed');
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pickup`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_PICKUP');
+      });
+  }, 15000);
+
+  it('does not allow deposit after the no-show deadline', async () => {
+    const startTime = futureHour(94);
+    const created = await request(app.getHttpServer())
+      .post('/api/reservations')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .set('Idempotency-Key', `late-deposit-${startTime}`)
+      .send({
+        station_id: centralId,
+        size: 'Small',
+        start_time: startTime,
+        duration_hours: 1,
+      })
+      .expect(201);
+
+    const sql = getSql();
+    await sql`
+      UPDATE public.reservations
+      SET no_show_deadline = now() - interval '1 minute'
+      WHERE id = ${created.body.id}::uuid
+    `;
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/pay`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ method: 'promptpay' })
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_PAY');
+      });
+
+    await request(app.getHttpServer())
+      .patch(`/api/reservations/${created.body.id}/deposit`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('CANNOT_DEPOSIT');
+      });
+  });
 });

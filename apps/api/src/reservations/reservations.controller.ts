@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { AuthGuard, type AuthUser } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { PayReservationDto } from './dto/pay-reservation.dto';
 import { IdempotencyInterceptor } from './idempotency.interceptor';
 import { ReservationsService } from './reservations.service';
 
@@ -49,5 +50,30 @@ export class ReservationsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {
     return this.reservations.cancel(user.id, id);
+  }
+
+  @Patch(':id/pay')
+  pay(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() body: PayReservationDto,
+  ) {
+    return this.reservations.pay(user.id, id, body.method);
+  }
+
+  @Patch(':id/deposit')
+  deposit(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.reservations.deposit(user.id, id);
+  }
+
+  @Patch(':id/pickup')
+  pickup(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.reservations.pickup(user.id, id);
   }
 }

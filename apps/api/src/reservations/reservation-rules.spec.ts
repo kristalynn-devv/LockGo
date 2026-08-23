@@ -1,10 +1,15 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiError } from '../common/http-error';
 import {
+  accessCode,
   assertOwner,
   canCancel,
+  canDeposit,
+  canPay,
+  canPickup,
   effectiveStatus,
   isValidReservationWindow,
+  visibleAccessCode,
 } from './reservation-rules';
 
 describe('reservation rules', () => {
@@ -50,8 +55,9 @@ describe('reservation rules', () => {
     expect(() => assertOwner('alice', 'alice')).not.toThrow();
   });
 
-  it('AC-16 allows cancel while status is Reserved', () => {
+  it('AC-16 allows cancel only while Reserved and unpaid', () => {
     expect(canCancel('Reserved')).toBe(true);
+    expect(canCancel('Reserved', new Date('2026-08-23T08:01:00.000Z'))).toBe(false);
   });
 
   it('AC-17 rejects cancel when status is Cancelled', () => {
@@ -77,5 +83,53 @@ describe('reservation rules', () => {
       now,
     );
     expect(canCancel(status)).toBe(false);
+  });
+
+  it('AC-23 allows deposit only after payment while Reserved', () => {
+    expect(canDeposit('Reserved')).toBe(false);
+    expect(canDeposit('Reserved', new Date('2026-08-23T08:01:00.000Z'))).toBe(true);
+  });
+
+  it('AC-24 rejects deposit when status is Active or Completed', () => {
+    const paid = new Date('2026-08-23T08:01:00.000Z');
+    expect(canDeposit('Active', paid)).toBe(false);
+    expect(canDeposit('Completed', paid)).toBe(false);
+  });
+
+  it('AC-24 rejects deposit after the no-show deadline', () => {
+    const status = effectiveStatus(
+      { status: 'Reserved', noShowDeadline: new Date('2026-08-23T07:15:00.000Z') },
+      now,
+    );
+    expect(canDeposit(status)).toBe(false);
+  });
+
+  it('AC-25 allows pickup while status is Active', () => {
+    expect(canPickup('Active')).toBe(true);
+  });
+
+  it('AC-26 rejects pickup when status is Reserved or Completed', () => {
+    expect(canPickup('Reserved')).toBe(false);
+    expect(canPickup('Completed')).toBe(false);
+  });
+
+  it('derives a 6-digit mock access code from the reservation number', () => {
+    expect(accessCode('LK-20260813-000123')).toBe('000123');
+  });
+
+  it('AC-27 hides the access code until payment', () => {
+    expect(visibleAccessCode('LK-20260813-000123', null)).toBeNull();
+  });
+
+  it('AC-28 reveals the access code after payment', () => {
+    expect(visibleAccessCode('LK-20260813-000123', new Date('2026-08-23T08:01:00.000Z'))).toBe(
+      '000123',
+    );
+  });
+
+  it('AC-28 allows mock pay while Reserved and unpaid', () => {
+    expect(canPay('Reserved')).toBe(true);
+    expect(canPay('Reserved', new Date('2026-08-23T08:01:00.000Z'))).toBe(false);
+    expect(canPay('Expired')).toBe(false);
   });
 });

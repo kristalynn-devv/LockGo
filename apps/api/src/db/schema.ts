@@ -114,6 +114,7 @@ export const reservations = pgTable(
     unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).notNull(),
     durationHours: integer('duration_hours').notNull(),
     totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -154,5 +155,30 @@ export const idempotencyKeys = pgTable(
   },
   (table) => [
     uniqueIndex('idempotency_keys_user_key_uidx').on(table.userId, table.key),
+  ],
+);
+
+/** รายการชำระจากฟังก์ชันบน Supabase — ไม่เก็บเลขบัตร ไม่ต่อเกตเวย์ */
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reservationId: uuid('reservation_id')
+      .notNull()
+      .references(() => reservations.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+    currency: text('currency').notNull().default('THB'),
+    method: text('method').notNull().default('promptpay'),
+    status: text('status').notNull().default('completed'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('payments_reservation_uidx').on(table.reservationId),
+    index('payments_user_idx').on(table.userId),
   ],
 );

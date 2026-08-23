@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { ApiError } from '../common/http-error';
 import { getDb, getSql } from '../db/database';
 import { compartments, lockerStations, reservations } from '../db/schema';
@@ -7,8 +7,12 @@ import { mapReservationCreateError } from './reservation-errors';
 import {
   assertOwner,
   canCancel,
+  canDeposit,
+  canPay,
+  canPickup,
   effectiveStatus,
   isValidReservationWindow,
+  visibleAccessCode,
 } from './reservation-rules';
 
 type CreatedRow = {
@@ -37,6 +41,7 @@ type ReservationDetail = {
   unitPrice: string;
   durationHours: number;
   totalPrice: string;
+  paidAt: Date | null;
   stationId: string;
   stationName: string;
   address: string;
@@ -105,6 +110,17 @@ export class ReservationsService {
   }
 
   async cancel(userId: string, id: string) {
+    return this.transition(userId, id, {
+      from: 'Reserved',
+      to: 'Cancelled',
+      paid: 'unpaid',
+      allowed: (row) => canCancel(this.effectiveStatus(row), row.paidAt),
+      code: 'CANNOT_CANCEL',
+      message: 'Only an unpaid reserved booking can be cancelled',
+    });
+  }
+
+  async pay(userId: string, id: string, method: 'promptpay' | 'card' | 'bank') {
     await this.expireOverdue();
     const row = await this.findRow(id);
     if (!row) {
@@ -112,27 +128,95 @@ export class ReservationsService {
     }
     assertOwner(row.userId, userId);
 
-    if (!canCancel(this.effectiveStatus(row))) {
+    if (row.paidAt) {
+      return this.presentRow(row);
+    }
+
+    if (!canPay(this.effectiveStatus(row), row.paidAt)) {
       throw new ApiError(
         HttpStatus.CONFLICT,
-        'CANNOT_CANCEL',
-        'Only a reserved booking can be cancelled',
+        'CANNOT_PAY',
+        'Only an unpaid reserved booking can be paid',
       );
+    }
+
+    try {
+      const sql = getSql();
+      const rows = await sql<CreatedRow[]>`
+        SELECT *
+        FROM private.pay_lockgo_reservation(
+          ${userId}::uuid,
+          ${id}::uuid,
+          ${method}::text
+        )
+      `;
+      return this.present(rows[0]);
+    } catch (error) {
+      throw mapReservationCreateError(error);
+    }
+  }
+
+  async deposit(userId: string, id: string) {
+    return this.transition(userId, id, {
+      from: 'Reserved',
+      to: 'Active',
+      paid: 'required',
+      allowed: (row) => canDeposit(this.effectiveStatus(row), row.paidAt),
+      code: 'CANNOT_DEPOSIT',
+      message: 'Only a paid reserved booking can be used to deposit',
+    });
+  }
+
+  async pickup(userId: string, id: string) {
+    return this.transition(userId, id, {
+      from: 'Active',
+      to: 'Completed',
+      allowed: (row) => canPickup(this.effectiveStatus(row)),
+      code: 'CANNOT_PICKUP',
+      message: 'Only an active booking can be used to pick up',
+    });
+  }
+
+  private async transition(
+    userId: string,
+    id: string,
+    step: {
+      from: 'Reserved' | 'Active';
+      to: 'Active' | 'Completed' | 'Cancelled';
+      paid?: 'required' | 'unpaid';
+      allowed: (row: ReservationRecord) => boolean;
+      code: string;
+      message: string;
+    },
+  ) {
+    await this.expireOverdue();
+    const row = await this.findRow(id);
+    if (!row) {
+      throw new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
+    }
+    assertOwner(row.userId, userId);
+
+    if (!step.allowed(row)) {
+      throw new ApiError(HttpStatus.CONFLICT, step.code, step.message);
+    }
+
+    const filters = [eq(reservations.id, id), eq(reservations.status, step.from)];
+    if (step.paid === 'required') {
+      filters.push(isNotNull(reservations.paidAt));
+    }
+    if (step.paid === 'unpaid') {
+      filters.push(isNull(reservations.paidAt));
     }
 
     const db = getDb();
     const [updated] = await db
       .update(reservations)
-      .set({ status: 'Cancelled', updatedAt: new Date() })
-      .where(and(eq(reservations.id, id), eq(reservations.status, 'Reserved')))
+      .set({ status: step.to, updatedAt: new Date() })
+      .where(and(...filters))
       .returning();
 
     if (!updated) {
-      throw new ApiError(
-        HttpStatus.CONFLICT,
-        'CANNOT_CANCEL',
-        'Only a reserved booking can be cancelled',
-      );
+      throw new ApiError(HttpStatus.CONFLICT, step.code, step.message);
     }
 
     return this.presentRow(updated);
@@ -191,6 +275,7 @@ export class ReservationsService {
         unitPrice: reservations.unitPrice,
         durationHours: reservations.durationHours,
         totalPrice: reservations.totalPrice,
+        paidAt: reservations.paidAt,
         stationId: lockerStations.id,
         stationName: lockerStations.name,
         address: lockerStations.address,
@@ -222,6 +307,9 @@ export class ReservationsService {
         status: row.status,
         noShowDeadline: row.noShowDeadline,
       }),
+      paid: row.paidAt != null,
+      paid_at: row.paidAt ? new Date(row.paidAt).toISOString() : null,
+      access_code: visibleAccessCode(row.reservationNumber, row.paidAt),
       unit_price: Number(row.unitPrice),
       duration_hours: row.durationHours,
       total_price: Number(row.totalPrice),

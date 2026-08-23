@@ -1,13 +1,36 @@
 import { APP_NAME } from '@lockgo/shared'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { awaitingPayment, inUse, useReservationList } from '../lib/reservations'
 import { useTheme } from '../lib/theme'
 import { Icon, type IconName } from './icons'
 import { secondaryButtonClass, shellPadClass, shellWidthClass } from './Page'
 
-const NAV: { to: string; label: string; icon: IconName }[] = [
-  { to: '/', label: 'ค้นหา', icon: 'search' },
-  { to: '/history', label: 'ประวัติ', icon: 'clock' },
+type TabMatch = 'home' | 'unpaid' | 'active' | 'history'
+
+const TABS: {
+  to: string | { pathname: string; search: string }
+  label: string
+  icon: IconName
+  match: TabMatch
+  badge?: 'due' | 'active'
+}[] = [
+  { to: '/', label: 'ค้นหา', icon: 'search', match: 'home' },
+  {
+    to: { pathname: '/history', search: '?status=unpaid' },
+    label: 'รอชำระ',
+    icon: 'lock',
+    match: 'unpaid',
+    badge: 'due',
+  },
+  {
+    to: { pathname: '/history', search: '?status=Active' },
+    label: 'ใช้งาน',
+    icon: 'box',
+    match: 'active',
+    badge: 'active',
+  },
+  { to: '/history', label: 'ประวัติ', icon: 'clock', match: 'history' },
 ]
 
 function initials(email?: string | null) {
@@ -29,8 +52,63 @@ function ThemeButton() {
   )
 }
 
+function countTone(tone: 'warn' | 'ok') {
+  return tone === 'ok' ? 'bg-ok text-surface' : 'bg-warn text-surface'
+}
+
+function CountBadge({ count, tone }: { count: number; tone: 'warn' | 'ok' }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={`ml-0.5 inline-grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold ${countTone(tone)}`}
+    >
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
+function IconCount({ count, tone }: { count: number; tone: 'warn' | 'ok' }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={`absolute -top-1.5 -right-2.5 z-10 grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold leading-4 ${countTone(tone)}`}
+    >
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
+function useTabMatch() {
+  const { pathname, search } = useLocation()
+  const status = new URLSearchParams(search).get('status')
+
+  return (match: TabMatch) => {
+    if (match === 'home') return pathname === '/'
+    if (pathname !== '/history') return false
+    if (match === 'unpaid') return status === 'unpaid'
+    if (match === 'active') return status === 'Active'
+    return !status || status === 'Completed' || status === 'Cancelled' || status === 'Expired'
+  }
+}
+
+function useNavCounts() {
+  const list = useReservationList(useAuth().session?.access_token ?? '').data?.items
+  return {
+    dueCount: awaitingPayment(list).length,
+    activeCount: inUse(list).length,
+  }
+}
+
+function tabBadge(tab: (typeof TABS)[number], dueCount: number, activeCount: number) {
+  if (tab.badge === 'due') return { count: dueCount, tone: 'warn' as const }
+  if (tab.badge === 'active') return { count: activeCount, tone: 'ok' as const }
+  return null
+}
+
 export function Header() {
   const { user, signOut } = useAuth()
+  const isMatch = useTabMatch()
+  const { dueCount, activeCount } = useNavCounts()
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur-xl">
@@ -48,23 +126,25 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-0.5 md:flex">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-2 rounded-ctl px-3 py-2.5 text-sm transition-colors ${
-                  isActive
+          {TABS.map((item) => {
+            const active = isMatch(item.match)
+            const badge = tabBadge(item, dueCount, activeCount)
+            return (
+              <Link
+                key={item.match}
+                to={item.to}
+                className={`flex items-center gap-2 rounded-ctl px-3 py-2.5 text-sm transition-colors ${
+                  active
                     ? 'bg-accent-soft font-semibold text-accent-text'
                     : 'font-medium text-ink-muted hover:bg-elevated hover:text-ink'
-                }`
-              }
-            >
-              <Icon name={item.icon} className="size-[15px]" />
-              {item.label}
-            </NavLink>
-          ))}
+                }`}
+              >
+                <Icon name={item.icon} className="size-[15px]" />
+                {item.label}
+                {badge ? <CountBadge count={badge.count} tone={badge.tone} /> : null}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="flex items-center gap-1.5">
@@ -83,8 +163,8 @@ export function Header() {
               <p className="truncate text-xs text-ink-faint">{user?.email}</p>
               <button
                 type="button"
-                onClick={() => void signOut()}
                 className={`${secondaryButtonClass} mt-2.5 w-full`}
+                onClick={() => void signOut()}
               >
                 ออกจากระบบ
               </button>
@@ -98,23 +178,30 @@ export function Header() {
 
 /** แถบล่างสำหรับมือถือ — ซ่อนตั้งแต่ md ขึ้นไปเพราะย้ายไปอยู่บน header แล้ว */
 export function TabBar() {
+  const isMatch = useTabMatch()
+  const { dueCount, activeCount } = useNavCounts()
+
   return (
-    <nav className="flex gap-1 border-t border-line bg-surface/95 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
-      {NAV.map((tab) => (
-        <NavLink
-          key={tab.label}
-          to={tab.to}
-          end={tab.to === '/'}
-          className={({ isActive }) =>
-            `grid min-h-10 flex-1 justify-items-center gap-0.5 rounded-lg py-1 text-[11px] font-semibold transition-colors ${
-              isActive ? 'bg-accent-soft text-accent-text' : 'text-ink-faint hover:text-ink-muted'
-            }`
-          }
-        >
-          <Icon name={tab.icon} />
-          {tab.label}
-        </NavLink>
-      ))}
+    <nav className="flex gap-0.5 border-t border-line bg-surface/95 px-1.5 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
+      {TABS.map((tab) => {
+        const active = isMatch(tab.match)
+        const badge = tabBadge(tab, dueCount, activeCount)
+        return (
+          <Link
+            key={tab.match}
+            to={tab.to}
+            className={`grid min-h-11 min-w-0 flex-1 justify-items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold transition-colors ${
+              active ? 'bg-accent-soft text-accent-text' : 'text-ink-faint hover:text-ink-muted'
+            }`}
+          >
+            <span className="relative overflow-visible">
+              <Icon name={tab.icon} />
+              {badge ? <IconCount count={badge.count} tone={badge.tone} /> : null}
+            </span>
+            {tab.label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

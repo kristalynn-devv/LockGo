@@ -7,11 +7,11 @@ Take-home ของ AI Fullstack Engineer ตาม Assessment + PRD — ข้�
 
 ## 1. Project Overview
 
-ผู้ใช้ล็อกอินแล้วค้นหาตู้ใกล้สถานที่ในกรุงเทพ ดูช่องว่างแยก Small / Medium / Large เลือกวันเวลา (ล่วงหน้าได้ 7 วัน ระยะ 1–24 ชม.) เห็นเรทกับยอดรวม แล้วยืนยันการจอง ได้หมายเลขการจอง และดูประวัติหรือยกเลิกใบที่ยัง Reserved
+ผู้ใช้ล็อกอินแล้วค้นหาตู้ใกล้สถานที่ในกรุงเทพ ดูช่องว่างแยก Small / Medium / Large เลือกวันเวลา (ล่วงหน้าได้ 7 วัน ระยะ 1–24 ชม.) เห็นเรทกับยอดรวม แล้วยืนยันการจอง ได้หมายเลขการจอง กรอกฟอร์มชำระแล้วฟังก์ชันบน Supabase เขียนรายการชำระจึงจะได้รหัสเปิดตู้ เปิดตู้เพื่อฝากหรือรับของ และดูประวัติหรือยกเลิกใบที่ยังไม่จ่าย
 
-**ทำในรอบนี้:** ค้นหา · รายละเอียด + Available Time · จอง · ยืนยัน · ประวัติ · ยกเลิก · กันจองซ้อนที่ช่อง · กันกดซ้ำ · Auth จริง
+**ทำในรอบนี้:** ค้นหา · รายละเอียด + Available Time · จอง · ยืนยัน · ฟอร์มชำระ · ชำระบน Supabase · เปิดตู้จำลอง · ฝากของ · รับของ · ประวัติ · ยกเลิก · กันจองซ้อนที่ช่อง · กันกดซ้ำ · Auth จริง
 
-**ไม่ทำตาม PRD §19:** Payment Gateway จริง · QR / Bluetooth Unlock · Hardware · Push Notification จริง · Google Maps API จริง · Production Deployment
+**ไม่ทำตาม PRD §19:** Payment Gateway จริง · QR / Bluetooth Unlock จริง · Hardware · Push Notification จริง · Google Maps API จริง · Production Deployment
 
 ---
 
@@ -28,8 +28,8 @@ Supabase   Auth + Postgres + Realtime
 | เส้น | จาก → ถึง | ใช้ทำ |
 |------|-----------|--------|
 | Auth SDK | web → Supabase Auth | Google / email+password ได้ JWT |
-| REST | web → Nest `/api/*` | ค้นหา ดูจอง สร้างจอง ยกเลิก |
-| RPC | Nest → `private.create_lockgo_reservation` | ล็อกช่องแล้ว INSERT |
+| REST | web → Nest `/api/*` | ค้นหา ดูจอง สร้างจอง ยกเลิก ชำระ ฝาก รับ |
+| RPC | Nest → `private.create_lockgo_reservation` · `private.pay_lockgo_reservation` | ล็อกช่องแล้ว INSERT · เขียน `payments` + `paid_at` |
 | Realtime | Supabase → web | สัญญาณแล้ว `invalidateQueries` เท่านั้น |
 
 อ่านและเขียนการจองเดินผ่าน Nest ทั้งหมด เพราะกฎจองซ้อนอยู่ที่ SQL ฟังก์ชันเดียว หน้าบ้านถือได้แค่ publishable key
@@ -42,6 +42,7 @@ Supabase   Auth + Postgres + Realtime
 |------|---------|--------|
 | Monorepo | pnpm workspace | สองแอปหนึ่งสัญญา HTTP ไม่แยก git repo |
 | Frontend | React 19 + Vite + TypeScript | ทำ 4 หน้าจอ + ประวัติได้เร็ว มี Vite 8 อยู่แล้ว |
+| Ticket QR | `qrcode.react` | วาด QR พร้อมเพย์จำลองบนหน้าจ่าย และ QR ตั๋วเปิดตู้หลังชำระ |
 | Styling | Tailwind CSS v4 | token ใน `index.css` · class ร่วมใน `Page.tsx` — ดู [docs/design.md](./docs/design.md) |
 | Backend | NestJS | guard / pipe / interceptor / Swagger / Jest อยู่ในที่เดียว |
 | ORM | Drizzle | schema เป็น TypeScript แล้วตามด้วย SQL มือสำหรับ EXCLUDE |
@@ -131,7 +132,7 @@ Windows: `setup.cmd` (ขั้น migrate + seed ทำอัตโนมัต
 | แหล่ง | โฟลเดอร์ | เนื้อหา |
 |-------|----------|---------|
 | Drizzle | `apps/api/drizzle/` | ตารางหลัก (stations, compartments, reservations, …) |
-| SQL มือ | `supabase/migrations/` | auth sync, EXCLUDE กันจองซ้อน, RLS, RPC |
+| SQL มือ | `supabase/migrations/` | auth sync, EXCLUDE กันจองซ้อน, RLS, `paid_at` + `payments`, RPC จอง/ชำระ |
 
 **seed เอาข้อมูลจากไหน?** hardcode ใน `apps/api/src/db/seed.ts` — สร้างบัญชี Alice/Bob ผ่าน Supabase Auth API และใส่สถานีตู้ 5 แห่งในกรุงเทพ
 
@@ -262,7 +263,10 @@ Swagger UI: http://localhost:3000/api/docs
 | POST | `/api/reservations` | สร้างการจอง |
 | GET | `/api/reservations` | ประวัติของตัวเอง |
 | GET | `/api/reservations/{id}` | ดูใบจอง เจ้าของเท่านั้น |
-| PATCH | `/api/reservations/{id}/cancel` | ยกเลิกใบ Reserved ของตัวเอง |
+| PATCH | `/api/reservations/{id}/cancel` | ยกเลิกใบ Reserved ที่ยังไม่จ่าย |
+| PATCH | `/api/reservations/{id}/pay` | ฟอร์มส่ง `method` แล้วฟังก์ชันบน Supabase เขียน `payments` + `paid_at` |
+| PATCH | `/api/reservations/{id}/deposit` | เปิดตู้จำลองแล้วฝากของ — Reserved ที่จ่ายแล้ว → Active |
+| PATCH | `/api/reservations/{id}/pickup` | เปิดตู้จำลองแล้วรับของ — Active → Completed |
 
 Error รูปเดียวทั้งระบบ: `{ statusCode, code, message }`
 

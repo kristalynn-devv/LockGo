@@ -189,7 +189,8 @@ export function availabilityTone(count: number): string {
   return 'bg-ok-soft text-ok'
 }
 
-export function statusTone(status: string): string {
+export function statusTone(status: string, paid = false): string {
+  if (status === 'Reserved' && !paid) return 'bg-warn-soft text-warn'
   if (status === 'Reserved') return 'bg-accent-soft text-accent-text'
   if (status === 'Active' || status === 'Open') return 'bg-ok-soft text-ok'
   if (status === 'Expired') return 'bg-danger-soft text-danger'
@@ -208,7 +209,8 @@ const STATUS_LABELS: Record<string, string> = {
   Expired: 'หมดอายุ',
 }
 
-export function statusLabel(status: string): string {
+export function statusLabel(status: string, paid = false): string {
+  if (status === 'Reserved' && !paid) return 'รอชำระ'
   return STATUS_LABELS[status] ?? status
 }
 

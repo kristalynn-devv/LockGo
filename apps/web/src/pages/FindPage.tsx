@@ -2,10 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listLockers, listLocations } from '../lib/api'
+import { awaitingPayment, inUse, useReservationList } from '../lib/reservations'
 import { useAuth } from '../lib/auth'
 import { availabilityTone, formatDistance, money, shortSize, statusLabel, statusTone } from '../lib/format'
-import { SIZES, type LocationItem, type LockerFilters, type LockerSort } from '../lib/types'
-import { Icon } from '../ui/icons'
+import { SIZES, type LocationItem, type LockerFilters, type LockerSort, type Reservation } from '../lib/types'
+import { Icon, type IconName } from '../ui/icons'
 import {
   cardClass,
   cardCtaClass,
@@ -15,6 +16,7 @@ import {
   labelClass,
   Page,
   priceClass,
+  primaryButtonClass,
 } from '../ui/Page'
 import { MenuSelect } from '../ui/MenuSelect'
 import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
@@ -67,6 +69,10 @@ export function FindPage() {
 
   const patch = (next: Partial<LockerFilters>) =>
     setFilters((current) => ({ ...current, ...next }))
+
+  const reservations = useReservationList(token).data?.items
+  const dues = awaitingPayment(reservations)
+  const actives = inUse(reservations)
 
   const locations = useQuery({
     queryKey: ['lockers', 'locations'],
@@ -189,15 +195,6 @@ export function FindPage() {
     setOpen(true)
   }
 
-  const sortLabel =
-    filters.sort === 'price'
-      ? 'ราคาเริ่มต้นต่ำก่อน'
-      : filters.sort === 'available'
-        ? 'ช่องว่างมากก่อน'
-        : origin
-          ? `ใกล้ ${origin.name}`
-          : 'เลือกสถานที่หรือใกล้ฉัน เพื่อเรียงระยะทาง'
-
   return (
     <Page wide>
       <section className={`${cardClass} mb-3 p-4`}>
@@ -273,11 +270,10 @@ export function FindPage() {
             type="button"
             aria-label="ใกล้ฉัน"
             aria-pressed={usingHere}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors ${
-              usingHere
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors ${usingHere
                 ? 'border-accent bg-accent-soft text-accent-text'
                 : 'border-line-strong text-ink-muted hover:bg-elevated'
-            }`}
+              }`}
             onClick={locateHere}
           >
             <Icon name="pin" className="size-3.5" />
@@ -352,12 +348,30 @@ export function FindPage() {
         ) : null}
       </section>
 
+      <ActionBanner
+        items={dues}
+        filter="unpaid"
+        title="มีใบรอชำระ"
+        icon="lock"
+        tone="warn"
+        detail={(item) => `${item.station_name} · ${money(item.total_price)}`}
+        action="ชำระเงิน"
+      />
+      <ActionBanner
+        items={actives}
+        filter="Active"
+        title={actives.some((item) => item.status === 'Active') ? 'มีของในตู้' : 'พร้อมเปิดตู้'}
+        icon="box"
+        tone="ok"
+        detail={(item) => item.station_name}
+        action="ดู QR"
+      />
+
       {geoError ? <p className="mb-3 text-sm text-ink-muted">{geoError}</p> : null}
 
       {lockers.isSuccess ? (
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <p className="text-base font-semibold">{items.length} สถานี</p>
-          <p className="text-sm text-ink-muted">{sortLabel}</p>
         </div>
       ) : null}
 
@@ -429,5 +443,51 @@ export function FindPage() {
         })}
       </div>
     </Page>
+  )
+}
+
+function ActionBanner({
+  items,
+  filter,
+  title,
+  icon,
+  tone,
+  detail,
+  action,
+}: {
+  items: Reservation[]
+  filter: 'unpaid' | 'Active'
+  title: string
+  icon: IconName
+  tone: 'warn' | 'ok'
+  detail: (item: Reservation) => string
+  action: string
+}) {
+  const first = items[0]
+  if (!first) return null
+  const many = items.length > 1
+  const look =
+    tone === 'warn'
+      ? { card: 'border-warn/50 hover:border-warn', icon: 'bg-warn-soft text-warn' }
+      : { card: 'border-ok/50 hover:border-ok', icon: 'bg-ok-soft text-ok' }
+
+  return (
+    <Link
+      to={many ? `/history?status=${filter}` : `/reservations/${first.id}`}
+      className={`${cardClass} mb-3 flex items-center gap-3 p-4 ${look.card}`}
+    >
+      <div className={`grid size-11 shrink-0 place-items-center rounded-lg ${look.icon}`}>
+        <Icon name={icon} className="size-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">{many ? `${title} · ${items.length} ใบ` : title}</p>
+        <p className="truncate text-sm text-ink-muted">
+          {many ? 'เลือกตู้ที่ต้องการ' : detail(first)}
+        </p>
+      </div>
+      <span className={`${primaryButtonClass} w-auto shrink-0 px-4`}>
+        {many ? 'ดูทั้งหมด' : action}
+      </span>
+    </Link>
   )
 }

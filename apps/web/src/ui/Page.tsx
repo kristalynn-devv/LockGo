@@ -99,7 +99,7 @@ export function Page({
 }) {
   return (
     <main
-      className={`mx-auto min-w-0 flex-1 py-6 ${shellPadClass} ${
+      className={`mx-auto min-w-0 flex-1 py-4 sm:py-6 lg:py-8 ${shellPadClass} ${
         wide ? shellWidthClass : 'w-full max-w-3xl'
       }`}
     >

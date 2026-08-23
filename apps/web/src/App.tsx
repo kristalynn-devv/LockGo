@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { useLayoutEffect } from 'react'
+import {
+  Navigate,
+  Outlet,
+  RouterProvider,
+  createBrowserRouter,
+  useLocation,
+} from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { RealtimeBridge } from './lib/realtime'
 import { ThemeProvider } from './lib/theme'
@@ -9,6 +16,7 @@ import { DetailPage } from './pages/DetailPage'
 import { FindPage } from './pages/FindPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LoginPage } from './pages/LoginPage'
+import { PayPage } from './pages/PayPage'
 import { ReservePage } from './pages/ReservePage'
 import { Header, TabBar } from './ui/Header'
 import { IconSprite } from './ui/icons'
@@ -23,6 +31,14 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 function ProtectedLayout() {
   const { session, loading } = useAuth()
@@ -41,6 +57,7 @@ function ProtectedLayout() {
 
   return (
     <FooterSlotProvider>
+      <ScrollToTop />
       <div className="flex min-h-svh min-w-0 flex-col">
         <Header />
         <Outlet />
@@ -61,6 +78,7 @@ const router = createBrowserRouter([
       { path: '/', element: <FindPage /> },
       { path: '/lockers/:id', element: <DetailPage /> },
       { path: '/lockers/:id/reserve', element: <ReservePage /> },
+      { path: '/reservations/:id/pay', element: <PayPage /> },
       { path: '/reservations/:id', element: <ConfirmPage /> },
       { path: '/history', element: <HistoryPage /> },
     ],

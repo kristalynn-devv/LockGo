@@ -46,8 +46,8 @@ flowchart LR
 | เส้น | จาก → ถึง | ใช้ทำ | ห้าม |
 |------|-----------|--------|------|
 | Auth SDK | web → Supabase Auth | login / session / JWT | ห้ามให้ web insert การจอง |
-| REST | web → Nest `/api/*` | ค้นหา ดูจอง สร้างจอง ยกเลิก | ห้ามเรียก Supabase Data API |
-| RPC / SQL | Nest → Postgres | availability + `create_lockgo_reservation` | ห้ามให้ frontend ถือ service role |
+| REST | web → Nest `/api/*` | ค้นหา ดูจอง สร้างจอง ยกเลิก ชำระ ฝาก รับ | ห้ามเรียก Supabase Data API |
+| RPC / SQL | Nest → Postgres | availability + `create_lockgo_reservation` + `pay_lockgo_reservation` | ห้ามให้ frontend ถือ service role |
 | Realtime | Supabase → web | สัญญาณอย่างเดียว | ห้ามเชื่อ event เป็นแหล่งความจริงของช่องว่าง |
 
 เมื่อ Realtime บอกว่าตาราง `reservations` เปลี่ยน หน้าบ้านแค่ `invalidateQueries` แล้วดึง REST ใหม่ Availability จริงคิดที่ Nest / ฟังก์ชันล็อกทุกครั้ง
@@ -62,6 +62,8 @@ flowchart LR
 web ถือได้แค่ publishable key สำหรับ Auth และ Realtime
 
 ## กันจองซ้อนสองชั้น + กันกดซ้ำ
+
+ชำระ: web ส่ง `method` เข้า Nest แล้ว Nest เรียก `private.pay_lockgo_reservation` บน Supabase ไม่ให้ web เขียน Data API
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +99,7 @@ sequenceDiagram
 |--------|---------|--------|
 | Auth | `auth/auth.guard.ts` | ตรวจ JWT ด้วย `SUPABASE_JWT_SECRET` — ไม่แยก Nest module |
 | Lockers | `LockersModule` | `GET /api/lockers` · `/locations` · `/{id}` |
-| Reservations | `ReservationsModule` | สร้าง ดู ประวัติ ยกเลิก + idempotency interceptor |
+| Reservations | `ReservationsModule` | สร้าง ดู ประวัติ ยกเลิก ชำระ ฝาก รับ · ชำระเรียก `pay_lockgo_reservation` + idempotency interceptor |
 | Pricing | ใน service ของ lockers / reservations | `max(rate × hours, 30)` |
 
 path ไม่มี `/v1` และไม่ใช้คำว่า bookings (`T-01`)

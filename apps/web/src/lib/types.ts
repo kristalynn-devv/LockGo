@@ -49,9 +49,21 @@ export type Reservation = {
   end_time: string
   no_show_deadline: string
   status: string
+  paid: boolean
+  paid_at: string | null
+  access_code: string | null
   unit_price: number
   duration_hours: number
   total_price: number
+}
+
+export function isAwaitingPayment(item: Pick<Reservation, 'status' | 'paid'>) {
+  return item.status === 'Reserved' && item.paid !== true
+}
+
+/** จ่ายแล้ว — ฝากหรือรับของได้ โชว์ในกลุ่มใช้งาน */
+export function isLockerReady(item: Pick<Reservation, 'status' | 'paid'>) {
+  return item.status === 'Active' || (item.status === 'Reserved' && item.paid === true)
 }
 
 export type LockerSort = 'nearest' | 'price' | 'available'

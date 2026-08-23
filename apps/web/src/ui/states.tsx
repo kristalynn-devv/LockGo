@@ -142,7 +142,7 @@ export function NoticeCard({
 export function Badge({ children, tone }: { children: ReactNode; tone: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
+      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
     >
       {children}
     </span>
@@ -156,13 +156,22 @@ export function Chip({
   children,
   compact,
   switchRole,
+  tone,
 }: {
   pressed: boolean
   onClick: () => void
   children: ReactNode
   compact?: boolean
   switchRole?: boolean
+  tone?: 'warn' | 'ok'
 }) {
+  const idle =
+    tone === 'warn'
+      ? 'border-warn/40 bg-warn-soft font-semibold text-warn'
+      : tone === 'ok'
+        ? 'border-ok/40 bg-ok-soft font-semibold text-ok'
+        : `${compact ? 'border-line' : 'border-line-strong'} bg-surface text-ink-muted hover:bg-elevated`
+
   return (
     <button
       type="button"
@@ -172,13 +181,9 @@ export function Chip({
       onClick={onClick}
       className={`rounded-full border ${
         compact
-          ? 'inline-flex h-8 items-center px-2.5 text-xs'
-          : 'min-h-11 px-3 text-sm'
-      } ${
-        pressed
-          ? 'border-accent bg-accent-soft font-medium text-accent-text'
-          : `${compact ? 'border-line' : 'border-line-strong'} bg-surface text-ink-muted hover:bg-elevated`
-      }`}
+          ? 'inline-flex h-8 shrink-0 items-center px-2.5 text-xs whitespace-nowrap'
+          : 'inline-flex min-h-11 shrink-0 items-center px-3 text-sm whitespace-nowrap'
+      } ${pressed ? 'border-accent bg-accent-soft font-medium text-accent-text' : idle}`}
     >
       {children}
     </button>

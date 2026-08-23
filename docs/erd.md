@@ -3,7 +3,7 @@
 แหล่งอ้างอิง: [requirements.md](./requirements.md) §17 · §25 (T-02, S-04, S-05, S-06, C-03, C-09)
 
 Assessment บังคับอย่างน้อย 4 entity: User · Locker · Compartment · Reservation  
-รอบนี้เพิ่ม `station_pricing` (เรทรายสถานี) และ `idempotency_keys` (กันกด Confirm ซ้ำ) ตามที่ล็อกไว้แล้ว ไม่เพิ่มตารางนอกนั้น
+รอบนี้เพิ่ม `station_pricing` (เรทรายสถานี) `idempotency_keys` (กันกด Confirm ซ้ำ) และ `payments` (transaction หลังกรอกฟอร์มชำระ)
 
 ```mermaid
 erDiagram
@@ -14,6 +14,8 @@ erDiagram
   COMPARTMENTS ||--o{ RESERVATIONS : "booked as"
   USERS ||--o{ IDEMPOTENCY_KEYS : "confirm keys"
   RESERVATIONS ||--o| IDEMPOTENCY_KEYS : "first success"
+  USERS ||--o{ PAYMENTS : "pays"
+  RESERVATIONS ||--o| PAYMENTS : "one paid txn"
 
   AUTH_USERS {
     uuid id PK
@@ -65,8 +67,20 @@ erDiagram
     numeric unit_price
     int duration_hours
     numeric total_price
+    timestamptz paid_at
     timestamptz created_at
     timestamptz updated_at
+  }
+
+  PAYMENTS {
+    uuid id PK
+    uuid reservation_id UK_FK
+    uuid user_id FK
+    numeric amount
+    text currency
+    text method
+    text status
+    timestamptz created_at
   }
 
   IDEMPOTENCY_KEYS {
@@ -89,6 +103,7 @@ erDiagram
 | `compartments` | `reservations` | 1:N | จองผูกช่องเจาะจง ไม่ใช่โควตาต่อขนาด — C-01 · P-02 |
 | `users` | `reservations` | 1:N | ประวัติและสิทธิ์เจ้าของ — C-04 · BR-09 |
 | `users` + key | `idempotency_keys` | 1:N | คนละปัญหากับจองซ้อน — S-05 |
+| `reservations` | `payments` | 1:0..1 | ชำระสำเร็จหนึ่งใบหนึ่งแถว — P-01 |
 
 `AUTH_USERS` ในภาพคือตารางของ Supabase ไม่สร้างเอง
 
@@ -116,9 +131,11 @@ erDiagram
 | กันกดซ้ำ | `idempotency_keys` | unique `(user_id, key)` — ห้าม unique `(user_id, compartment_id, start_time)` เพราะยกเลิกแล้วจองใหม่ได้ |
 | ราคา | `reservations` | เก็บ `unit_price`, `duration_hours`, `total_price` ตาม C-09 · สูตร `max(rate × hours, 30)` |
 | หมดอายุ | `no_show_deadline` | `start_time + 15 นาที` แยกจาก `end_time` |
+| ชำระ | `paid_at` + `payments` | ฟังก์ชัน `pay_lockgo_reservation` บน Supabase · `method` = promptpay / card / bank · ไม่เก็บเลขบัตร |
 
 สถานะใน enum: `Reserved` · `Active` · `Completed` · `Cancelled` · `Expired`  
-รอบนี้เปลี่ยนจริงแค่ Reserved / Expired / Cancelled (`P-02`)
+รอบนี้เปลี่ยนจริงตาม P-02: Reserved → Active (ฝาก) → Completed (รับ) และ Expired / Cancelled  
+`access_code` คำนวณจากหมายเลขจองตอน present **คืนเฉพาะเมื่อ `paid_at` มีค่า** ไม่เก็บเป็นคอลัมน์
 
 ขนาดช่อง: `Small` · `Medium` · `Large`  
 สถานะตู้: `Open` · `Maintenance` · `Closed` — ตู้ที่ไม่ Open ไม่โผล่ในค้นหาและจองไม่ได้ (`BR-08`)

@@ -27,8 +27,37 @@ export function effectiveStatus(
   return row.status;
 }
 
-export function canCancel(status: string) {
-  return status === 'Reserved';
+export function isPaid(paidAt: Date | null | undefined) {
+  return paidAt != null;
+}
+
+export function canCancel(status: string, paidAt: Date | null = null) {
+  return status === 'Reserved' && !isPaid(paidAt);
+}
+
+export function canPay(status: string, paidAt: Date | null = null) {
+  return status === 'Reserved' && !isPaid(paidAt);
+}
+
+export function canDeposit(status: string, paidAt: Date | null = null) {
+  return status === 'Reserved' && isPaid(paidAt);
+}
+
+export function canPickup(status: string) {
+  return status === 'Active';
+}
+
+/** รหัสเปิดตู้จำลอง — ตัวเลขท้ายหมายเลขจอง 6 หลัก ไม่ใช่ QR จริง */
+export function accessCode(reservationNumber: string) {
+  const digits = reservationNumber.replace(/\D/g, '');
+  return digits.slice(-6).padStart(6, '0');
+}
+
+export function visibleAccessCode(
+  reservationNumber: string,
+  paidAt: Date | null | undefined,
+) {
+  return isPaid(paidAt) ? accessCode(reservationNumber) : null;
 }
 
 export function isOwner(ownerId: string, userId: string) {

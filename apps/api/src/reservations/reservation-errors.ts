@@ -64,6 +64,30 @@ export function mapReservationCreateError(error: unknown): ApiError {
   if (text.includes('STATION_NOT_FOUND') || text.includes('USER_NOT_FOUND')) {
     return new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Resource not found');
   }
+  if (text.includes('INVALID_PAYMENT_METHOD')) {
+    return new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'INVALID_PAYMENT_METHOD',
+      'Choose a valid payment method',
+    );
+  }
+  if (text.includes('CANNOT_PAY')) {
+    return new ApiError(
+      HttpStatus.CONFLICT,
+      'CANNOT_PAY',
+      'Only an unpaid reserved booking can be paid',
+    );
+  }
+  if (text.includes('FORBIDDEN') || codes.includes('42501')) {
+    return new ApiError(
+      HttpStatus.FORBIDDEN,
+      'FORBIDDEN',
+      'You do not have access to this reservation',
+    );
+  }
+  if (text.includes('NOT_FOUND')) {
+    return new ApiError(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Reservation not found');
+  }
 
   return new ApiError(
     HttpStatus.INTERNAL_SERVER_ERROR,

@@ -18,7 +18,11 @@ const MESSAGES: Record<string, string> = {
   STATION_UNAVAILABLE: 'ตู้นี้ไม่เปิดให้จอง',
   INVALID_RESERVATION: 'เลือกเวลาเริ่มต้นในอนาคต ระยะ 1–24 ชม. และไม่เกิน 7 วัน',
   UNAUTHORIZED: 'กรุณาเข้าสู่ระบบอีกครั้ง',
-  CANNOT_CANCEL: 'ยกเลิกได้เฉพาะรายการที่ยังจองอยู่',
+  CANNOT_CANCEL: 'ยกเลิกได้เฉพาะรายการที่ยังจองอยู่และยังไม่ชำระ',
+  CANNOT_PAY: 'ชำระได้เฉพาะรายการที่ยังจองอยู่',
+  INVALID_PAYMENT_METHOD: 'เลือกวิธีชำระเงินก่อน',
+  CANNOT_DEPOSIT: 'ฝากของได้หลังจากชำระเงินแล้ว',
+  CANNOT_PICKUP: 'รับของได้เฉพาะตอนที่ของอยู่ในช่องแล้ว',
   NOT_FOUND: 'ไม่พบข้อมูลที่ต้องการ',
   IDEMPOTENCY_KEY_REQUIRED: 'ไม่สามารถส่งคำขอได้ กรุณาลองใหม่',
 }
@@ -111,6 +115,28 @@ export function getReservation(token: string, id: string) {
 
 export function cancelReservation(token: string, id: string) {
   return request<Reservation>(`/reservations/${id}/cancel`, {
+    token,
+    method: 'PATCH',
+  })
+}
+
+export function payReservation(token: string, id: string, method: 'promptpay' | 'card' | 'bank') {
+  return request<Reservation>(`/reservations/${id}/pay`, {
+    token,
+    method: 'PATCH',
+    body: { method },
+  })
+}
+
+export function depositReservation(token: string, id: string) {
+  return request<Reservation>(`/reservations/${id}/deposit`, {
+    token,
+    method: 'PATCH',
+  })
+}
+
+export function pickupReservation(token: string, id: string) {
+  return request<Reservation>(`/reservations/${id}/pickup`, {
     token,
     method: 'PATCH',
   })
