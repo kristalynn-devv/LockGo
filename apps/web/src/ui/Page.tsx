@@ -16,38 +16,53 @@ import { createPortal } from 'react-dom'
 export const shellPadClass = 'px-4 sm:px-6 lg:px-8'
 export const shellWidthClass = 'w-full max-w-7xl'
 
-/** 1 คอลัมน์มือถือ · 2 แท็บเล็ต · 3 เดสก์ท็อป */
-export const cardGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
+/** 1 คอลัมน์มือถือ · 2 แท็บเล็ต · 3 เดสก์ท็อป · ช่องไฟระหว่างการ์ดตามสเปก */
+export const cardGridClass = 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3'
 
 export const stickyRailClass = 'min-w-0 lg:sticky lg:top-16'
 
 /** โครง 12 คอลัมน์ - เนื้อหา 8 / แถบข้าง 4 ตั้งแต่ lg */
-export const splitGridClass = 'grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-6'
+export const splitGridClass = 'grid grid-cols-1 items-start gap-3 lg:grid-cols-12 lg:gap-6'
 
 export const cardClass =
-  'min-w-0 rounded-card border border-line bg-surface shadow-card'
+  'min-w-0 rounded-lg border border-line bg-surface shadow-sm'
 
 /** พื้นที่กดของการ์ดรายการ - ทั้งใบเป็นเป้า ไม่ใช่แค่ข้อความมุมขวา */
-export const cardHitClass = 'block p-4 hover:bg-elevated'
+export const cardHitClass =
+  'block cursor-pointer p-4 transition-colors hover:border-accent-line hover:bg-elevated'
 
 export const fieldClass =
-  'min-h-11 w-full min-w-0 max-w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink hover:border-accent-line focus:border-accent focus:outline-none'
+  'min-h-11 w-full min-w-0 max-w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink transition-colors hover:border-accent-line focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent'
 
 export const primaryButtonClass =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
 
 export const secondaryButtonClass =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
 
 export const linkButtonClass =
-  'inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-accent-text hover:underline'
+  'inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-text transition-colors hover:underline'
 
-/** แอคชันทำลาย - เป้าครบแต่ไม่แย่งปุ่มหลัก */
+/** แอคชันทำลาย - เป้า 44px เต็มความกว้าง แต่ไม่แย่งปุ่มหลัก */
 export const quietButtonClass =
-  'inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-medium text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
 
-export const labelClass =
-  'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint'
+export const pageTitleClass = 'text-2xl font-semibold text-ink'
+export const cardTitleClass = 'text-lg font-semibold text-ink'
+export const priceClass = 'text-xl font-bold tabular-nums text-ink'
+export const labelClass = 'text-xs font-medium uppercase tracking-wide text-ink-muted'
+
+/** แถวตัวกรอง: เลื่อนแนวนอนบนมือถือ ขึ้นบรรทัดได้ตั้งแต่ sm */
+export const filterRowClass =
+  'flex gap-2 overflow-x-auto pb-0.5 sm:flex-wrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+
+/** CTA แถบล่างมือถือ — กะทัดรัด ไม่เต็มความกว้าง */
+export const compactButtonClass =
+  'inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-accent px-3.5 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
+
+/** CTA ในท้ายการ์ดรายการ — อยู่ใน Link จึงไม่ใช้ <button> */
+export const cardCtaClass =
+  'inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg bg-accent-soft px-3 text-sm font-semibold text-accent-text'
 
 /** ป้ายอยู่นอกเป้ากด — ห้ามห่อ DateField / MenuSelect ด้วย <label> */
 export function Field({
@@ -84,14 +99,14 @@ export function Page({
 }) {
   return (
     <main
-      className={`mx-auto min-w-0 flex-1 py-4 sm:py-6 ${shellPadClass} ${
+      className={`mx-auto min-w-0 flex-1 py-6 ${shellPadClass} ${
         wide ? shellWidthClass : 'w-full max-w-3xl'
       }`}
     >
       {title || action ? (
         <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
           {title ? (
-            <h1 className="min-w-0 text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
+            <h1 className={`min-w-0 ${pageTitleClass}`}>
               {title}
             </h1>
           ) : (
@@ -158,7 +173,7 @@ export function ActionBar({ children }: { children: ReactNode }) {
   const slot = useContext(FooterSlotContext)?.slot ?? null
   const bar = (
     <div
-      className={`flex items-center justify-between gap-3 border-t border-line bg-surface/95 py-2.5 md:pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden ${shellPadClass}`}
+      className={`flex items-center justify-between gap-3 border-t border-line bg-surface/95 py-2 md:pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden ${shellPadClass}`}
     >
       {children}
     </div>

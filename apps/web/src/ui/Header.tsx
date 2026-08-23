@@ -22,7 +22,7 @@ function ThemeButton() {
       type="button"
       onClick={toggle}
       aria-label={resolved === 'dark' ? 'สลับเป็นธีมสว่าง' : 'สลับเป็นธีมมืด'}
-      className="grid size-[34px] place-items-center rounded-ctl text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
+      className="grid size-10 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
     >
       <Icon name={resolved === 'dark' ? 'sun' : 'moon'} />
     </button>
@@ -74,12 +74,12 @@ export function Header() {
           </span>
           <details className="group relative">
             <summary
-              className="grid size-[34px] cursor-pointer list-none place-items-center rounded-full border border-accent-line bg-accent-soft text-xs font-bold text-accent-text transition-colors hover:border-accent"
+              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-accent-line bg-accent-soft text-xs font-bold text-accent-text transition-colors hover:border-accent"
               aria-label="เมนูโปรไฟล์"
             >
               {initials(user?.email)}
             </summary>
-            <div className="absolute right-0 z-30 mt-2 w-60 rounded-card border border-line bg-surface p-3 shadow-lift">
+            <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-surface p-3 shadow-sm">
               <p className="truncate text-xs text-ink-faint">{user?.email}</p>
               <button
                 type="button"
@@ -106,7 +106,7 @@ export function TabBar() {
           to={tab.to}
           end={tab.to === '/'}
           className={({ isActive }) =>
-            `grid min-h-13 flex-1 justify-items-center gap-1 rounded-ctl py-1.5 text-[10.5px] font-semibold transition-colors ${
+            `grid min-h-10 flex-1 justify-items-center gap-0.5 rounded-lg py-1 text-[11px] font-semibold transition-colors ${
               isActive ? 'bg-accent-soft text-accent-text' : 'text-ink-faint hover:text-ink-muted'
             }`
           }

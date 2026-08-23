@@ -8,6 +8,7 @@ import {
   cardClass,
   fieldClass,
   labelClass,
+  pageTitleClass,
   primaryButtonClass,
   secondaryButtonClass,
 } from '../ui/Page'
@@ -90,8 +91,8 @@ export function LoginPage() {
             {APP_NAME}
           </span>
 
-          <div className={`${cardClass} p-5`}>
-            <h1 className="text-[23px] font-bold tracking-[-0.02em]">เข้าสู่ระบบ</h1>
+          <div className={`${cardClass} p-4 sm:p-5`}>
+            <h1 className={pageTitleClass}>เข้าสู่ระบบ</h1>
             <p className="mt-1.5 text-sm text-ink-muted">
               เข้าสู่ระบบเพื่อค้นหาและจองตู้ล็อกเกอร์
             </p>

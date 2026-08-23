@@ -9,9 +9,12 @@ import { Icon } from '../ui/icons'
 import {
   ActionBar,
   cardClass,
+  compactButtonClass,
   labelClass,
   linkButtonClass,
   Page,
+  pageTitleClass,
+  priceClass,
   primaryButtonClass,
   splitGridClass,
   SplitLayout,
@@ -86,7 +89,7 @@ export function DetailPage() {
               <section className={`${cardClass} rise p-4`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h1 className="text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
+                    <h1 className={pageTitleClass}>
                       {station.name}
                     </h1>
                     <p className="mt-1.5 flex items-start gap-1.5 text-sm text-ink-muted">
@@ -146,7 +149,7 @@ export function DetailPage() {
                       type="button"
                       disabled={disabled}
                       onClick={() => setSize(item)}
-                      className={`relative w-full rounded-lg border p-3.5 text-left ${disabled
+                      className={`relative min-h-11 w-full rounded-lg border p-3.5 text-left transition-colors ${disabled
                           ? 'pointer-events-none border-line opacity-50'
                           : isSelected
                             ? 'border-accent bg-accent-soft ring-2 ring-accent'
@@ -178,7 +181,7 @@ export function DetailPage() {
 
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-sm text-ink-muted">เริ่มต้น</span>
-                <span className="text-xl font-bold tabular-nums">
+                <span className={priceClass}>
                   {money(station.starting_price)}
                 </span>
               </div>
@@ -202,14 +205,14 @@ export function DetailPage() {
           <p className={labelClass}>
             {selected ?? '-'} · {selectedAvailable === 0 ? (selectedRanges.length > 0 ? 'เต็มตอนนี้' : 'เต็ม') : `ว่าง ${selectedAvailable}`}
           </p>
-          <p className="text-xl font-bold tabular-nums">
+          <p className={priceClass}>
             {selected ? money(station.rates[selected]) : money(station.starting_price)}
             <span className="ml-1 text-xs font-medium text-ink-muted">/ ชม.</span>
           </p>
         </div>
         <button
           type="button"
-          className={`${primaryButtonClass} shrink-0 px-5`}
+          className={compactButtonClass}
           disabled={!canReserve}
           onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
         >

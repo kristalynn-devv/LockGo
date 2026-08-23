@@ -8,11 +8,14 @@ import type { Reservation } from '../lib/types'
 import { Icon } from '../ui/icons'
 import {
   cardClass,
+  cardCtaClass,
   cardGridClass,
-  cardHitClass,
+  cardTitleClass,
+  filterRowClass,
   labelClass,
   linkButtonClass,
   Page,
+  priceClass,
   quietButtonClass,
 } from '../ui/Page'
 import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
@@ -84,19 +87,21 @@ export function HistoryPage() {
 
   return (
     <Page title="ประวัติการจอง" wide>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {STATUS_FILTERS.map((item) => (
-          <Chip
-            compact
-            key={item.id}
-            pressed={status === item.id}
-            onClick={() => setStatus((current) => (current === item.id ? '' : item.id))}
-          >
-            {item.label}
-          </Chip>
-        ))}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className={`${filterRowClass} min-w-0 flex-1`}>
+          {STATUS_FILTERS.map((item) => (
+            <Chip
+              compact
+              key={item.id}
+              pressed={status === item.id}
+              onClick={() => setStatus((current) => (current === item.id ? '' : item.id))}
+            >
+              {item.label}
+            </Chip>
+          ))}
+        </div>
         {status ? (
-          <button type="button" className={`${linkButtonClass} text-xs`} onClick={() => setStatus('')}>
+          <button type="button" className={`${linkButtonClass} shrink-0 text-xs`} onClick={() => setStatus('')}>
             ล้างตัวกรอง
           </button>
         ) : null}
@@ -157,10 +162,10 @@ function HistoryCard({
   const reserved = item.status === 'Reserved'
 
   return (
-    <article className={`${cardClass} min-w-0 overflow-hidden`}>
-      <Link to={`/reservations/${item.id}`} className={cardHitClass}>
-        <div className="flex items-start justify-between gap-2.5">
-          <h2 className="min-w-0 text-base font-semibold">{item.station_name}</h2>
+    <article className={`${cardClass} min-w-0 overflow-hidden transition-colors hover:border-accent-line`}>
+      <Link to={`/reservations/${item.id}`} className="block cursor-pointer p-4 hover:bg-elevated">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className={`min-w-0 ${cardTitleClass}`}>{item.station_name}</h2>
           <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
         </div>
 
@@ -181,16 +186,19 @@ function HistoryCard({
 
         <p className="mt-2 text-xs text-ink-faint tabular-nums">{item.reservation_number}</p>
 
-        <div className="mt-3.5 flex items-end justify-between gap-2.5 border-t border-line pt-3">
+        <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
           <div>
             <p className={labelClass}>ราคารวม</p>
-            <p className="text-xl font-bold tabular-nums">{money(item.total_price)}</p>
+            <p className={priceClass}>{money(item.total_price)}</p>
           </div>
-          <span className="text-sm font-medium text-accent-text">รายละเอียด</span>
+          <span className={cardCtaClass}>
+            รายละเอียด
+            <Icon name="arrow" className="size-3.5" />
+          </span>
         </div>
       </Link>
       {reserved ? (
-        <div className="border-t border-line px-4">
+        <div className="border-t border-line px-3 py-2">
           <button type="button" className={quietButtonClass} disabled={cancelling} onClick={onCancel}>
             {cancelling ? 'กำลังยกเลิก…' : 'ยกเลิก'}
           </button>

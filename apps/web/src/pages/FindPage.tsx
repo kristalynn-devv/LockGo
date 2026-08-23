@@ -8,11 +8,13 @@ import { SIZES, type LocationItem, type LockerFilters, type LockerSort } from '.
 import { Icon } from '../ui/icons'
 import {
   cardClass,
+  cardCtaClass,
   cardGridClass,
   cardHitClass,
+  cardTitleClass,
   labelClass,
-  linkButtonClass,
   Page,
+  priceClass,
 } from '../ui/Page'
 import { MenuSelect } from '../ui/MenuSelect'
 import { Badge, Chip, EmptyState, ErrorState, SkeletonList } from '../ui/states'
@@ -133,6 +135,7 @@ export function FindPage() {
     setSearch('')
     setOrigin(null)
     setOpen(false)
+    setMoreOpen(false)
     setGeoError(null)
   }
 
@@ -197,19 +200,19 @@ export function FindPage() {
 
   return (
     <Page wide>
-      <section className={`${cardClass} mb-3 p-2.5`}>
-        <div className="flex overflow-hidden rounded-lg border border-line bg-elevated/40 focus-within:border-accent">
+      <section className={`${cardClass} mb-3 p-4`}>
+        <div className="flex overflow-hidden rounded-lg border border-line-strong bg-surface transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
           <div className="relative min-w-0 flex-1">
             <label className="sr-only" htmlFor="locker-search">
               ค้นหาสถานี
             </label>
             <Icon
               name="search"
-              className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-ink-faint"
+              className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-ink-faint"
             />
             <input
               id="locker-search"
-              className="h-10 w-full min-w-0 border-0 bg-transparent pr-9 pl-8 text-sm text-ink outline-none placeholder:text-ink-faint"
+              className="h-11 w-full min-w-0 border-0 bg-transparent pr-10 pl-9 text-sm text-ink outline-none placeholder:text-ink-faint"
               type="text"
               role="searchbox"
               placeholder="ค้นหาชื่อสถานีหรือที่อยู่"
@@ -237,7 +240,7 @@ export function FindPage() {
               <button
                 type="button"
                 aria-label="ล้างคำค้น"
-                className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center text-ink-faint hover:text-ink"
+                className="absolute top-1/2 right-1.5 grid size-10 -translate-y-1/2 place-items-center text-ink-faint hover:text-ink"
                 onClick={() => onSearchChange('')}
               >
                 <Icon name="close" className="size-4" />
@@ -270,9 +273,9 @@ export function FindPage() {
             type="button"
             aria-label="ใกล้ฉัน"
             aria-pressed={usingHere}
-            className={`inline-flex shrink-0 items-center gap-1 border-l px-2.5 text-xs transition-colors ${
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors ${
               usingHere
-                ? 'border-accent bg-accent-soft font-medium text-accent-text'
+                ? 'border-accent bg-accent-soft text-accent-text'
                 : 'border-line-strong text-ink-muted hover:bg-elevated'
             }`}
             onClick={locateHere}
@@ -301,7 +304,7 @@ export function FindPage() {
             />
           </button>
           {dirty ? (
-            <button type="button" className={`${linkButtonClass} min-h-8 text-xs`} onClick={reset}>
+            <button type="button" className="inline-flex min-h-8 items-center text-xs font-medium text-accent-text hover:underline" onClick={reset}>
               ล้างทั้งหมด
             </button>
           ) : null}
@@ -387,8 +390,8 @@ export function FindPage() {
           const distance = formatDistance(item.distance_km)
           return (
             <Link key={item.id} to={`/lockers/${item.id}`} className={`${cardClass} ${cardHitClass}`}>
-              <div className="flex items-start justify-between gap-2.5">
-                <h2 className="min-w-0 text-base font-semibold">{item.name}</h2>
+              <div className="flex items-start justify-between gap-3">
+                <h2 className={`min-w-0 ${cardTitleClass}`}>{item.name}</h2>
                 <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
               </div>
 
@@ -403,7 +406,7 @@ export function FindPage() {
               <p className={`${labelClass} mt-3`}>
                 {item.availability_mode === 'window' ? 'ว่างช่วงที่เลือก' : 'ว่างตอนนี้'}
               </p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <div className="mt-1.5 flex flex-wrap gap-2">
                 {SIZES.map((size) => (
                   <Badge key={size} tone={availabilityTone(item.available[size])}>
                     {`${shortSize(size)} ${item.available[size]}`}
@@ -411,12 +414,15 @@ export function FindPage() {
                 ))}
               </div>
 
-              <div className="mt-3.5 flex items-end justify-between gap-2.5 border-t border-line pt-3">
+              <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
                 <div>
                   <p className={labelClass}>เริ่มต้น</p>
-                  <p className="text-xl font-bold tabular-nums">{money(item.starting_price)}</p>
+                  <p className={priceClass}>{money(item.starting_price)}</p>
                 </div>
-                <span className="text-sm font-medium text-accent-text">เลือก</span>
+                <span className={cardCtaClass}>
+                  เลือก
+                  <Icon name="arrow" className="size-3.5" />
+                </span>
               </div>
             </Link>
           )

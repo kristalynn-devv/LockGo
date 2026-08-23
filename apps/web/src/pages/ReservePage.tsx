@@ -24,10 +24,13 @@ import { Icon } from '../ui/icons'
 import {
   ActionBar,
   cardClass,
+  compactButtonClass,
   Field,
   labelClass,
   linkButtonClass,
   Page,
+  pageTitleClass,
+  priceClass,
   primaryButtonClass,
   secondaryButtonClass,
   splitGridClass,
@@ -179,7 +182,7 @@ export function ReservePage() {
         <Icon name="back" className="size-[15px]" />
         ย้อนกลับ
       </button>
-      <h1 className="mt-1.5 mb-4 text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
+      <h1 className={`mt-1.5 mb-4 ${pageTitleClass}`}>
         จองตู้
       </h1>
 
@@ -192,7 +195,7 @@ export function ReservePage() {
                   <Icon name="lock" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-base font-semibold wrap-break-word">{station.name}</h2>
+                  <h2 className="text-lg font-semibold wrap-break-word">{station.name}</h2>
                   <p className="mt-0.5 flex items-start gap-1.5 text-sm text-ink-muted">
                     <Icon name="pin" className="mt-0.5 size-4 shrink-0" />
                     <span className="min-w-0 wrap-break-word">{station.address}</span>
@@ -213,7 +216,7 @@ export function ReservePage() {
                       type="button"
                       disabled={empty}
                       onClick={() => setSize(item)}
-                      className={`grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-lg border px-1 py-2 text-sm font-medium ${empty
+                      className={`grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${empty
                         ? 'pointer-events-none border-line text-ink-faint opacity-50'
                         : isSelected
                           ? 'border-accent bg-accent-soft font-semibold text-accent-text ring-2 ring-accent'
@@ -333,7 +336,7 @@ export function ReservePage() {
 
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm text-ink-muted">รวม</span>
-              <span className="text-xl font-bold tabular-nums">{money(total)}</span>
+              <span className={priceClass}>{money(total)}</span>
             </div>
             {rate * duration < MIN_TOTAL_PRICE ? (
               <p className="mt-1 text-xs text-ink-faint">คิดขั้นต่ำ {money(MIN_TOTAL_PRICE)}</p>
@@ -356,11 +359,11 @@ export function ReservePage() {
           <p className={labelClass}>
             {size} · {duration} ชม.
           </p>
-          <p className="text-xl font-bold tabular-nums">{money(total)}</p>
+          <p className={priceClass}>{money(total)}</p>
         </div>
         <button
           type="button"
-          className={`${primaryButtonClass} shrink-0 px-5`}
+          className={compactButtonClass}
           disabled={disabled}
           onClick={onConfirm}
         >

@@ -53,11 +53,11 @@ export function EmptyState({
   onSecondary?: () => void
 }) {
   return (
-    <div className={`${cardClass} px-5 py-9 text-center`}>
-      <div className="mx-auto grid size-[72px] place-items-center rounded-[20px] bg-accent-soft text-accent-text">
-        <Icon name={icon} className="size-[30px]" />
+    <div className="rounded-lg border border-dashed border-line p-8 text-center">
+      <div className="mx-auto grid size-14 place-items-center rounded-lg bg-accent-soft text-accent-text">
+        <Icon name={icon} className="size-7" />
       </div>
-      <h3 className="mt-4 text-base font-semibold">{message}</h3>
+      <h3 className="mt-4 text-lg font-semibold">{message}</h3>
       {hint ? <p className="mt-2 text-sm text-ink-muted">{hint}</p> : null}
       {actionLabel || secondaryLabel ? (
         <div className="mt-5 flex flex-wrap justify-center gap-2.5">
@@ -69,7 +69,7 @@ export function EmptyState({
           {actionLabel && onAction ? (
             <button
               type="button"
-              className={`${primaryButtonClass} w-auto px-5`}
+              className={`${primaryButtonClass} w-auto min-w-28`}
               onClick={onAction}
             >
               {actionLabel}
@@ -93,16 +93,16 @@ export function ErrorState({
   children?: ReactNode
 }) {
   return (
-    <div className={`${cardClass} border-danger/40 bg-danger-soft/60 px-5 py-8 text-center`}>
-      <div className="mx-auto grid size-14 place-items-center rounded-full bg-danger-soft text-danger">
-        <Icon name="offline" className="size-6" />
+    <div className={`${cardClass} border-danger/40 bg-danger-soft p-4`}>
+      <div className="mx-auto grid size-10 place-items-center rounded-full bg-surface text-danger">
+        <Icon name="offline" className="size-5" />
       </div>
-      <h3 className="mt-4 text-base font-semibold">{message}</h3>
-      {hint ? <p className="mt-2 text-sm text-ink-muted">{hint}</p> : null}
+      <h3 className="mt-3 text-center text-lg font-semibold">{message}</h3>
+      {hint ? <p className="mt-1 text-center text-sm text-ink-muted">{hint}</p> : null}
       {onRetry ? (
         <button
           type="button"
-          className={`${primaryButtonClass} mt-5 w-auto px-6`}
+          className={`${primaryButtonClass} mx-auto mt-3 w-auto min-w-28`}
           onClick={onRetry}
         >
           ลองใหม่
@@ -126,11 +126,11 @@ export function NoticeCard({
   return (
     <div className={`${cardClass} border-warn/50 p-4`}>
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-ctl bg-warn-soft text-warn">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-warn-soft text-warn">
           <Icon name="alert" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-base font-semibold">{title}</h3>
+          <h3 className="text-lg font-semibold">{title}</h3>
           {message ? <p className="mt-1 text-sm text-ink-muted">{message}</p> : null}
         </div>
       </div>
@@ -142,7 +142,7 @@ export function NoticeCard({
 export function Badge({ children, tone }: { children: ReactNode; tone: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold whitespace-nowrap ${tone}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
     >
       {children}
     </span>
@@ -173,7 +173,7 @@ export function Chip({
       className={`rounded-full border ${
         compact
           ? 'inline-flex h-8 items-center px-2.5 text-xs'
-          : 'min-h-10 px-3 text-sm'
+          : 'min-h-11 px-3 text-sm'
       } ${
         pressed
           ? 'border-accent bg-accent-soft font-medium text-accent-text'

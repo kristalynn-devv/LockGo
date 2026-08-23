@@ -88,7 +88,7 @@ export function DateField({
             <button
               type="button"
               aria-label="เดือนก่อน"
-              className="grid size-8 place-items-center rounded-lg text-ink-muted hover:bg-elevated"
+              className="grid size-10 place-items-center rounded-lg text-ink-muted hover:bg-elevated"
               onClick={() =>
                 setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
               }
@@ -99,7 +99,7 @@ export function DateField({
             <button
               type="button"
               aria-label="เดือนถัดไป"
-              className="grid size-8 place-items-center rounded-lg text-ink-muted hover:bg-elevated"
+              className="grid size-10 place-items-center rounded-lg text-ink-muted hover:bg-elevated"
               onClick={() =>
                 setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
               }
@@ -147,7 +147,7 @@ export function DateField({
           {today >= min && today <= max && !unavailable?.(today) ? (
             <button
               type="button"
-              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-accent-text hover:bg-accent-soft"
+              className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg text-xs font-medium text-accent-text hover:bg-accent-soft"
               onClick={() => {
                 onChange(today)
                 setOpen(false)

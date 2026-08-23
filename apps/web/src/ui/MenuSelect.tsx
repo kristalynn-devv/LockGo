@@ -75,7 +75,7 @@ export function MenuSelect({
                   type="button"
                   role="option"
                   aria-selected={active}
-                  className={`flex w-full px-3 py-2 text-left text-sm ${
+                  className={`flex w-full px-3 py-2.5 text-left text-sm ${
                     active
                       ? 'bg-accent-soft font-medium text-accent-text'
                       : 'text-ink hover:bg-elevated'

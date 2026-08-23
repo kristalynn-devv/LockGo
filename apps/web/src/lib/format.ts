@@ -184,7 +184,7 @@ export function shortSize(size: Size): string {
 }
 
 export function availabilityTone(count: number): string {
-  if (count === 0) return 'bg-elevated text-ink-faint'
+  if (count === 0) return 'bg-danger-soft text-danger'
   if (count <= 2) return 'bg-warn-soft text-warn'
   return 'bg-ok-soft text-ok'
 }

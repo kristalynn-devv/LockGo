@@ -61,7 +61,7 @@ export function ConfirmPage() {
 
   return (
     <Page title={confirmed ? undefined : 'รายละเอียดการจอง'}>
-      <section className={`${cardClass} ${confirmed ? 'rise' : ''} px-5 py-7 text-center`}>
+      <section className={`${cardClass} ${confirmed ? 'rise' : ''} p-4 text-center sm:p-6`}>
         {confirmed ? (
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-ok-soft text-ok">
             <Icon name="check" className="size-6" />
@@ -73,7 +73,7 @@ export function ConfirmPage() {
         )}
 
         <p className={`${labelClass} mt-4`}>หมายเลขการจอง</p>
-        <p className="mt-1 text-[26px] font-bold tracking-[0.14em] tabular-nums">
+        <p className="mt-1 text-2xl font-bold tracking-wider tabular-nums">
           {item.reservation_number}
         </p>
         <div className="mt-2.5">
