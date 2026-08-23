@@ -129,7 +129,7 @@ export function LoginPage() {
                   required
                 />
               </label>
-              <button className={primaryButtonClass} disabled={pending} type="submit">
+              <button className={`${primaryButtonClass} w-full`} disabled={pending} type="submit">
                 {pending ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
               </button>
             </form>

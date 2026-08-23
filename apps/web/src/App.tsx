@@ -12,7 +12,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ReservePage } from './pages/ReservePage'
 import { Header, TabBar } from './ui/Header'
 import { IconSprite } from './ui/icons'
-import { FooterDock, Page } from './ui/Page'
+import { FooterDock, FooterSlotProvider, Page } from './ui/Page'
 import { SkeletonList } from './ui/states'
 
 const queryClient = new QueryClient({
@@ -40,13 +40,15 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <Header />
-      <Outlet />
-      <FooterDock>
-        <TabBar />
-      </FooterDock>
-    </div>
+    <FooterSlotProvider>
+      <div className="flex min-h-svh min-w-0 flex-col">
+        <Header />
+        <Outlet />
+        <FooterDock>
+          <TabBar />
+        </FooterDock>
+      </div>
+    </FooterSlotProvider>
   )
 }
 

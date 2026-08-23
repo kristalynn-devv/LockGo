@@ -91,13 +91,12 @@ export function HistoryPage() {
                 <Badge tone={statusTone(item.status)}>{item.status}</Badge>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+              <div className="mt-3 flex items-center justify-between gap-2">
                 <Link
                   to={`/reservations/${item.id}`}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-ctl px-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-soft"
                 >
                   รายละเอียด
-                  <Icon name="arrow" className="size-[15px]" />
                 </Link>
                 {item.status === 'Reserved' ? (
                   <button

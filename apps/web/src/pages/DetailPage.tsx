@@ -87,9 +87,9 @@ export function DetailPage() {
                     <h1 className="text-[23px] font-bold tracking-[-0.02em] sm:text-[26px]">
                       {station.name}
                     </h1>
-                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
-                      <Icon name="pin" className="size-[15px]" />
-                      {station.address}
+                    <p className="mt-1.5 flex items-start gap-1.5 text-sm text-ink-muted">
+                      <Icon name="pin" className="mt-0.5 size-4 shrink-0" />
+                      <span className="min-w-0 wrap-break-word">{station.address}</span>
                     </p>
                   </div>
                   <Badge tone={statusTone(station.status)}>
@@ -197,7 +197,7 @@ export function DetailPage() {
 
               <button
                 type="button"
-                className={`${primaryButtonClass} mt-3.5 hidden lg:inline-flex`}
+                className={`${primaryButtonClass} mt-3.5 hidden w-full lg:inline-flex`}
                 disabled={!selected || selectedAvailable === 0}
                 onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
               >
@@ -221,7 +221,7 @@ export function DetailPage() {
         </div>
         <button
           type="button"
-          className={`${primaryButtonClass} w-auto px-5`}
+          className={`${primaryButtonClass} shrink-0 px-5`}
           disabled={!selected || selectedAvailable === 0}
           onClick={() => navigate(`/lockers/${station.id}/reserve?size=${selected}`)}
         >

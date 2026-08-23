@@ -221,7 +221,7 @@ export function FindPage() {
             pressed={filters.price === value}
             onClick={() => patch({ price: toggle(filters.price, value) })}
           >
-            ถึง ฿{value}
+            ไม่เกิน ฿{value}
           </Chip>
         ))}
         <Chip

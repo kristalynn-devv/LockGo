@@ -149,15 +149,15 @@ export function ReservePage() {
                   <Icon name="lock" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-semibold">{station.name}</h2>
-                  <p className="truncate text-sm text-ink-muted">{station.address}</p>
+                  <h2 className="text-base font-semibold wrap-break-word">{station.name}</h2>
+                  <p className="text-sm text-ink-muted wrap-break-word">{station.address}</p>
                 </div>
               </div>
             </section>
 
             <section className={`${cardClass} p-4`}>
               <p className={labelClass}>ขนาดช่อง</p>
-              <div className="mt-2.5 grid grid-cols-3 gap-2">
+              <div className="mt-2.5 grid min-w-0 grid-cols-3 gap-2">
                 {SIZES.map((item) => {
                   const empty = station.available[item] === 0
                   const isSelected = size === item
@@ -167,7 +167,7 @@ export function ReservePage() {
                       type="button"
                       disabled={empty}
                       onClick={() => setSize(item)}
-                      className={`grid min-h-11 justify-items-center gap-0.5 rounded-lg border px-2 py-2 text-sm font-medium ${
+                      className={`grid min-h-11 min-w-0 justify-items-center gap-0.5 rounded-lg border px-1 py-2 text-sm font-medium ${
                         empty
                           ? 'pointer-events-none border-line text-ink-faint opacity-50'
                           : isSelected
@@ -176,8 +176,8 @@ export function ReservePage() {
                       }`}
                     >
                       {item}
-                      <small className="text-[11px] font-medium opacity-85">
-                        {empty ? 'เต็ม' : `${money(station.rates[item])} / ชม.`}
+                      <small className="text-center text-[11px] leading-tight font-medium opacity-85">
+                        {empty ? 'เต็ม' : `${money(station.rates[item])}/ชม.`}
                       </small>
                     </button>
                   )
@@ -187,8 +187,8 @@ export function ReservePage() {
               <hr className="my-4 border-line" />
 
               <p className={labelClass}>เวลาเริ่ม</p>
-              <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
-                <label className="block">
+              <div className="mt-2.5 grid min-w-0 gap-3 sm:grid-cols-2">
+                <label className="block min-w-0">
                   <span className={labelClass}>วันที่</span>
                   <input
                     className={`${fieldClass} mt-1.5`}
@@ -199,7 +199,7 @@ export function ReservePage() {
                     onChange={(event) => setDate(event.target.value)}
                   />
                 </label>
-                <label className="block">
+                <label className="block min-w-0">
                   <span className={labelClass}>เวลา</span>
                   <input
                     className={`${fieldClass} mt-1.5`}
@@ -301,7 +301,7 @@ export function ReservePage() {
 
             <button
               type="button"
-              className={`${primaryButtonClass} mt-3.5 hidden lg:inline-flex`}
+              className={`${primaryButtonClass} mt-3.5 hidden w-full lg:inline-flex`}
               disabled={disabled}
               onClick={onConfirm}
             >
@@ -320,7 +320,7 @@ export function ReservePage() {
         </div>
         <button
           type="button"
-          className={`${primaryButtonClass} w-auto px-5`}
+          className={`${primaryButtonClass} shrink-0 px-5`}
           disabled={disabled}
           onClick={onConfirm}
         >

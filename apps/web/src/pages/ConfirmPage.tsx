@@ -84,7 +84,7 @@ export function ConfirmPage() {
             <Link to="/history" className={`${secondaryButtonClass} w-full`}>
               ดูประวัติ
             </Link>
-            <Link to="/" className={primaryButtonClass}>
+            <Link to="/" className={`${primaryButtonClass} w-full`}>
               กลับหน้าแรก
             </Link>
           </div>

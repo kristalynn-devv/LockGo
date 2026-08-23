@@ -78,7 +78,14 @@
   }
 
   body {
-    @apply min-h-svh bg-canvas font-sans text-ink antialiased;
+    @apply min-h-svh overflow-x-clip bg-canvas font-sans text-ink antialiased;
+  }
+
+  /* Chrome/Safari บังคับความกว้างขั้นต่ำของ date/time จนดันทั้งหน้าให้ล้นจอ */
+  input[type='date'],
+  input[type='time'] {
+    min-width: 0;
+    max-width: 100%;
   }
 
   ::selection {

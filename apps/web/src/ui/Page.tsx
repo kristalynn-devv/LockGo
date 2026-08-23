@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -24,13 +25,13 @@ export const stickyRailClass = 'min-w-0 lg:sticky lg:top-16'
 export const splitGridClass = 'grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-6'
 
 export const cardClass =
-  'rounded-card border border-line bg-surface shadow-card'
+  'min-w-0 rounded-card border border-line bg-surface shadow-card'
 
 export const fieldClass =
-  'min-h-11 w-full rounded-ctl border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink transition-colors hover:border-accent-line focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/35'
+  'min-h-11 w-full min-w-0 max-w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink hover:border-accent-line focus:border-accent focus:outline-none'
 
 export const primaryButtonClass =
-  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-elevated disabled:text-ink-faint'
 
 export const secondaryButtonClass =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
@@ -55,7 +56,7 @@ export function Page({
 }) {
   return (
     <main
-      className={`mx-auto flex-1 py-4 sm:py-6 ${shellPadClass} ${
+      className={`mx-auto min-w-0 flex-1 py-4 sm:py-6 ${shellPadClass} ${
         wide ? shellWidthClass : 'w-full max-w-3xl'
       }`}
     >
@@ -92,38 +93,49 @@ export function SplitLayout({
   )
 }
 
-const FooterSlotContext = createContext<HTMLElement | null>(null)
+type FooterSlotValue = {
+  slot: HTMLElement | null
+  setSlot: (node: HTMLElement | null) => void
+}
+
+const FooterSlotContext = createContext<FooterSlotValue | null>(null)
+
+/** ครอบทั้งหน้า — ActionBar อยู่ใน Outlet นอก FooterDock ต้องเห็น slot เดียวกัน */
+export function FooterSlotProvider({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  const value = useMemo(() => ({ slot, setSlot }), [slot])
+  return <FooterSlotContext.Provider value={value}>{children}</FooterSlotContext.Provider>
+}
 
 /** แถบล่างของแอป — ActionBar กับ TabBar ซ้อนกันเอง ไม่ต้องเดาความสูง */
 export function FooterDock({ children }: { children: ReactNode }) {
+  const setSlot = useContext(FooterSlotContext)?.setSlot
   const slotRef = useRef<HTMLDivElement>(null)
-  const [slot, setSlot] = useState<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
-    setSlot(slotRef.current)
-  }, [])
+    setSlot?.(slotRef.current)
+    return () => setSlot?.(null)
+  }, [setSlot])
 
   return (
-    <FooterSlotContext.Provider value={slot}>
-      <div className="sticky bottom-0 z-20">
-        <div ref={slotRef} />
-        {children}
-      </div>
-    </FooterSlotContext.Provider>
+    <div className="sticky bottom-0 z-20">
+      <div ref={slotRef} />
+      {children}
+    </div>
   )
 }
 
 /** แถบสรุป+ปุ่มหลักบนมือถือ/แท็บเล็ต — lg ขึ้นไปใช้ปุ่มในการ์ดฝั่งขวาแทน */
 export function ActionBar({ children }: { children: ReactNode }) {
-  const slot = useContext(FooterSlotContext)
+  const slot = useContext(FooterSlotContext)?.slot ?? null
   const bar = (
     <div
-      className={`flex items-center gap-3 border-t border-line bg-surface/95 py-2.5 md:pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden ${shellPadClass}`}
+      className={`flex items-center justify-between gap-3 border-t border-line bg-surface/95 py-2.5 md:pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden ${shellPadClass}`}
     >
       {children}
     </div>
   )
-  if (!slot) return null
+  if (!slot) return bar
   return createPortal(bar, slot)
 }
 
