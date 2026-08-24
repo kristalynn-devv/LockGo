@@ -138,7 +138,10 @@ const QUICK_ACTIONS: { to: string; label: string; icon: IconName }[] = [
 ]
 
 export function AdminDashboardPage() {
-  const summary = useAdminQuery(['admin', 'summary'], getAdminSummary)
+  const summary = useAdminQuery(['admin', 'summary'], getAdminSummary, {
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
 
   if (summary.isLoading) {
     return (

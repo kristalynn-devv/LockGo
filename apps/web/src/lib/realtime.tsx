@@ -20,6 +20,7 @@ export function RealtimeBridge() {
         () => {
           void queryClient.invalidateQueries({ queryKey: ['lockers'] })
           void queryClient.invalidateQueries({ queryKey: ['reservations'] })
+          void queryClient.invalidateQueries({ queryKey: ['admin'] })
         },
       )
       .subscribe()

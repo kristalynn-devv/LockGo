@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
@@ -7,9 +8,9 @@ import {
   updateAdminStation,
   upsertAdminStationPricing,
 } from '../../lib/api'
-import { useAdminMutation, useAdminQuery } from '../../lib/adminQuery'
+import { useAdminMutation, useAdminQuery, useAdminQueryKey } from '../../lib/adminQuery'
 import { statusLabel, statusTone } from '../../lib/format'
-import type { Size } from '../../lib/types'
+import type { AdminStation, Size } from '../../lib/types'
 import { SIZES } from '../../lib/types'
 import { AdminTable, AdminTableBody, AdminTableHead, AdminTd, AdminTh } from '../../ui/AdminTable'
 import { useConfirm } from '../../ui/ConfirmDialog'
@@ -39,38 +40,47 @@ export function AdminStationDetailPage() {
   const { id = '' } = useParams()
   const { confirm, dialog } = useConfirm()
 
-  const station = useAdminQuery(
-    ['admin', 'stations', id],
-    (token) => getAdminStation(token, id),
-    { enabled: Boolean(id) },
-  )
+  // คีย์ของหน้ารายละเอียดใช้ 'station' (เอกพจน์) แยกจากคีย์รายการ 'stations'
+  // เพื่อให้ invalidate รายการไม่ลากให้หน้านี้โหลดซ้ำโดยไม่จำเป็น
+  const detailKey = useAdminQueryKey(['admin', 'station', id])
+  const station = useAdminQuery(['admin', 'station', id], (token) => getAdminStation(token, id), {
+    enabled: Boolean(id),
+  })
 
-  const cacheKey = ['admin', 'stations'] as const
+  const listKey = ['admin', 'stations']
+
+  /** ทุก endpoint ของสถานีตอบข้อมูลสถานีชุดเต็มกลับมา เขียนลงแคชเลยจะเห็นผลทันที */
+  const applyStation = (queryClient: QueryClient, data: AdminStation) => {
+    queryClient.setQueryData(detailKey, data)
+  }
 
   const update = useAdminMutation({
     run: (token, body: Parameters<typeof updateAdminStation>[2]) =>
       updateAdminStation(token, id, body),
     success: 'บันทึกข้อมูลสถานีสำเร็จ',
-    invalidate: [[...cacheKey]],
+    invalidate: [listKey],
+    applyToCache: applyStation,
   })
 
   const addCompartment = useAdminMutation({
     run: (token, body: { size: Size; label: string }) => createAdminCompartment(token, id, body),
     success: 'เพิ่มช่องล็อกเกอร์สำเร็จ',
-    invalidate: [[...cacheKey]],
+    invalidate: [listKey],
+    applyToCache: applyStation,
   })
 
   const removeCompartment = useAdminMutation({
     run: (token, compartmentId: string) => deleteAdminCompartment(token, id, compartmentId),
     success: 'ลบช่องล็อกเกอร์สำเร็จ',
-    invalidate: [[...cacheKey]],
+    invalidate: [listKey],
+    applyToCache: applyStation,
   })
 
   const upsertPricing = useAdminMutation({
     run: (token, args: { size: Size; rate: number }) =>
       upsertAdminStationPricing(token, id, args.size, args.rate),
     success: (_data, args) => `บันทึกราคา ${args.size} สำเร็จ`,
-    invalidate: [[...cacheKey]],
+    applyToCache: applyStation,
   })
 
   if (station.isLoading) {
@@ -167,7 +177,7 @@ export function AdminStationDetailPage() {
 
               <AddCompartmentForm
                 pending={addCompartment.isPending}
-                onSubmit={(body) => addCompartment.mutate(body)}
+                onSubmit={(body, done) => addCompartment.mutate(body, { onSuccess: done })}
               />
             </div>
 
@@ -315,7 +325,8 @@ function AddCompartmentForm({
   onSubmit,
 }: {
   pending: boolean
-  onSubmit: (body: { size: Size; label: string }) => void
+  /** done() เรียกเมื่อบันทึกสำเร็จเท่านั้น - เดิมล้างช่องกรอกทิ้งก่อนรู้ผล พอชื่อซ้ำก็พิมพ์ใหม่หมด */
+  onSubmit: (body: { size: Size; label: string }, done: () => void) => void
 }) {
   const [size, setSize] = useState<Size>('Small')
   const [label, setLabel] = useState('')
@@ -326,8 +337,7 @@ function AddCompartmentForm({
       onSubmit={(event) => {
         event.preventDefault()
         if (!label.trim()) return
-        onSubmit({ size, label: label.trim() })
-        setLabel('')
+        onSubmit({ size, label: label.trim() }, () => setLabel(''))
       }}
     >
       <MenuSelect

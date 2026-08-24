@@ -86,7 +86,7 @@ export function AdminDataTable<T>({
 }: {
   query: Pick<
     UseQueryResult<AdminListResult<T>>,
-    'data' | 'isLoading' | 'isError' | 'isFetching' | 'refetch'
+    'data' | 'isLoading' | 'isError' | 'isPlaceholderData' | 'refetch'
   >
   columns: AdminColumn<T>[]
   rowKey: (row: T) => string
@@ -118,7 +118,9 @@ export function AdminDataTable<T>({
   }
 
   return (
-    <div className={query.isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+    // หรี่เฉพาะตอนสลับหน้า/ตัวกรอง (ข้อมูลบนจอยังเป็นของชุดเดิม)
+    // ไม่ใช่ทุกครั้งที่ refetch เบื้องหลัง ไม่งั้นตารางจะกะพริบหลังกดบันทึกทุกครั้ง
+    <div className={query.isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
       {/* มือถือ: การ์ดอ่านง่ายกว่าตารางเลื่อนแนวนอน */}
       <div className="grid gap-3 md:hidden">
         {rows.map((row) => (
