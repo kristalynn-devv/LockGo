@@ -28,6 +28,7 @@ describe('AdminGuard', () => {
   });
 
   it('rejects a request with no authenticated user', async () => {
+    // ต้องผ่าน AuthGuard ก่อน — ไม่มี user บน request ได้ 401
     const guard = new AdminGuard();
 
     try {
@@ -43,6 +44,7 @@ describe('AdminGuard', () => {
   });
 
   it('rejects a user with no row in the staff table', async () => {
+    // ล็อกอินแล้วแต่ไม่มีแถวใน users/staff — ไม่ใช่แอดมิน
     whereMock.mockResolvedValue([]);
     const guard = new AdminGuard();
 
@@ -59,6 +61,7 @@ describe('AdminGuard', () => {
   });
 
   it('rejects a staff row whose role is not admin', async () => {
+    // role อื่น เช่น support — ห้ามเข้า /admin/*
     whereMock.mockResolvedValue([{ role: 'support', status: 'active' }]);
     const guard = new AdminGuard();
 
@@ -75,6 +78,7 @@ describe('AdminGuard', () => {
   });
 
   it('rejects an admin whose status is inactive', async () => {
+    // admin ที่ถูกปิดใช้งาน — 403 แม้ role ถูกต้อง
     whereMock.mockResolvedValue([{ role: 'admin', status: 'inactive' }]);
     const guard = new AdminGuard();
 
@@ -91,6 +95,7 @@ describe('AdminGuard', () => {
   });
 
   it('allows an active staff row with role admin', async () => {
+    // role=admin และ status=active — ผ่าน guard
     whereMock.mockResolvedValue([{ role: 'admin', status: 'active' }]);
     const guard = new AdminGuard();
 

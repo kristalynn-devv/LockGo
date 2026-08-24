@@ -24,6 +24,7 @@ function reservation(overrides: {
 
 describe('availability', () => {
   it('allows a booking when the compartment has no overlapping live reservation', () => {
+    // จอง 12:00–14:00 หลังช่อง 10:00–12:00 ว่าง — ช่วงไม่ทับกัน
     const free = isCompartmentFree(
       compartmentId,
       [
@@ -40,6 +41,7 @@ describe('availability', () => {
   });
 
   it('AC-03 rejects a booking when a reserved slot overlaps the requested window', () => {
+    // BR-02 / C-01 — ช่องเดียวกันจองซ้อนในช่วงเดียวกันไม่ได้
     const free = isCompartmentFree(
       compartmentId,
       [
@@ -56,6 +58,7 @@ describe('availability', () => {
   });
 
   it('AC-19 treats a reserved row past the no-show deadline as free', () => {
+    // C-07 / U-02 — เลย no_show_deadline แล้วไม่นับเป็น live ช่องกลับมาว่าง
     const now = new Date('2026-08-23T10:20:00.000Z');
     const row = reservation({
       start: '2026-08-23T10:00:00.000Z',
@@ -76,6 +79,7 @@ describe('availability', () => {
   });
 
   it('detects overlapping intervals and ignores touching edges', () => {
+    // 12:00 ต่อ 12:00 ไม่ทับ (half-open) · 11:00–13:00 ทับ 10:00–12:00
     const aStart = new Date('2026-08-23T10:00:00.000Z');
     const aEnd = new Date('2026-08-23T12:00:00.000Z');
     expect(
@@ -87,6 +91,7 @@ describe('availability', () => {
   });
 
   it('omits a booked hour from free ranges for that size', () => {
+    // I-03 / AC-20 — Available Time ตัดช่วงที่ถูกจองออกจาก free ranges
     const booked = reservation({
       start: '2026-08-23T10:00:00.000Z',
       end: '2026-08-23T12:00:00.000Z',

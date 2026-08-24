@@ -13,6 +13,7 @@ function httpContext() {
 
 describe('IdempotencyInterceptor', () => {
   it('AC-22 rejects POST /reservations without Idempotency-Key', () => {
+    // S-05 / BR-05 — กดยืนยันซ้ำต้องไม่สร้างจองซ้ำ จึงบังคับ Idempotency-Key
     const interceptor = new IdempotencyInterceptor();
 
     try {

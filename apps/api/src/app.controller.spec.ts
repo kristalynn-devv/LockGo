@@ -16,6 +16,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Hello World!"', () => {
+      // smoke test จาก Nest scaffold — ยืนยัน module บูตได้
       expect(appController.getHello()).toBe('Hello World!');
     });
   });

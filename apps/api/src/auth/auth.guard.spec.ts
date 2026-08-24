@@ -12,6 +12,7 @@ function httpContext() {
 
 describe('AuthGuard', () => {
   it('AC-07 rejects a request without a bearer token', async () => {
+    // C-05 / S-02 — ทุก /api/* ต้องมี Supabase JWT ใน Authorization header
     const guard = new AuthGuard();
 
     try {
