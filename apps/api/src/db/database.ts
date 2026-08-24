@@ -1,6 +1,7 @@
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres, { Sql } from 'postgres';
+import { Sql } from 'postgres';
 import { dbEnv } from './env';
+import { createPostgres } from './postgres-client';
 import * as schema from './schema';
 
 let sql: Sql | undefined;
@@ -8,7 +9,7 @@ let db: PostgresJsDatabase<typeof schema> | undefined;
 
 export function getSql() {
   if (!sql) {
-    sql = postgres(dbEnv.databaseUrl, { max: 4, ssl: dbEnv.sslMode });
+    sql = createPostgres(dbEnv.databaseUrl, dbEnv.sslMode, 4);
   }
   return sql;
 }

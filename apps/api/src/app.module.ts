@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleDestroy } from '@nestjs/common';
 import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { closeDb } from './db/database';
 import { LockersModule } from './lockers/lockers.module';
 import { MeModule } from './me/me.module';
 import { ReservationsModule } from './reservations/reservations.module';
@@ -11,4 +12,8 @@ import { ReservationsModule } from './reservations/reservations.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements OnModuleDestroy {
+  async onModuleDestroy() {
+    await closeDb();
+  }
+}

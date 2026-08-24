@@ -1,5 +1,5 @@
-import postgres from 'postgres';
 import { dbEnv } from './env';
+import { createPostgres } from './postgres-client';
 
 const TEST_USERS = [
   {
@@ -153,7 +153,7 @@ async function upsertAuthUser(user: (typeof TEST_USERS)[number]) {
   );
 }
 
-type Sql = ReturnType<typeof postgres>;
+type Sql = ReturnType<typeof createPostgres>;
 
 async function customerIdByName(sql: Sql, name: string) {
   const rows = await sql<{ id: string }[]>`
@@ -440,7 +440,7 @@ async function main() {
     await upsertAuthUser(user);
   }
 
-  const sql = postgres(dbEnv.databaseUrl, { max: 1, ssl: dbEnv.sslMode });
+  const sql = createPostgres(dbEnv.databaseUrl, dbEnv.sslMode, 1);
 
   for (const station of STATIONS) {
     const rows = await sql<{ id: string }[]>`

@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
 import { dbEnv } from './env';
+import { createPostgres } from './postgres-client';
 
 async function applyHandMigrations(sql: postgres.Sql) {
   await sql`CREATE SCHEMA IF NOT EXISTS private`;
@@ -62,7 +63,7 @@ function alreadyPresent(error: unknown): boolean {
 }
 
 async function main() {
-  const client = postgres(dbEnv.databaseUrl, { max: 1, ssl: dbEnv.sslMode });
+  const client = createPostgres(dbEnv.databaseUrl, dbEnv.sslMode, 1);
   const db = drizzle(client);
 
   try {
