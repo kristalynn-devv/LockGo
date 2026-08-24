@@ -148,7 +148,9 @@ async function upsertAuthUser(user: (typeof TEST_USERS)[number]) {
     return;
   }
 
-  throw new Error(`Failed to seed user ${user.email}: ${response.status}`);
+  throw new Error(
+    `Failed to seed user ${user.email}: ${response.status} ${body}`,
+  );
 }
 
 type Sql = ReturnType<typeof postgres>;

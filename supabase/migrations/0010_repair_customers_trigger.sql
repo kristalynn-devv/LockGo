@@ -1,51 +1,8 @@
--- A-02: split public.users into public.customers (everyone, auto-provisioned)
--- and a new public.users (staff only, added by hand) — presence in the new
--- public.users table is what grants admin access, no role column needed.
---
--- Drizzle 0001 already CREATE TABLEs public.customers, so RENAME users →
--- customers throws "already exists". run-migrations.ts used to swallow that
--- and skip the rest of this file — leaving handle_new_user inserting into
--- staff public.users (no avatar_url) and Auth Admin create-user returning 500.
-
-DO $$
-BEGIN
-  IF to_regclass('public.customers') IS NULL THEN
-    ALTER TABLE public.users RENAME TO customers;
-    ALTER TABLE public.customers DROP COLUMN IF EXISTS role;
-    ALTER POLICY users_select_own ON public.customers RENAME TO customers_select_own;
-  END IF;
-END $$;
-
-CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-  display_name text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conrelid = 'public.customers'::regclass
-      AND contype = 'f'
-      AND conname IN ('customers_id_fkey', 'users_id_fkey')
-  ) THEN
-    ALTER TABLE public.customers
-      ADD CONSTRAINT customers_id_fkey
-      FOREIGN KEY (id) REFERENCES auth.users (id) ON DELETE CASCADE;
-  END IF;
-END $$;
-
-DROP POLICY IF EXISTS customers_select_own ON public.customers;
-CREATE POLICY customers_select_own
-  ON public.customers
-  FOR SELECT
-  TO authenticated
-  USING (id = auth.uid());
+-- Repair: drizzle 0001 already created public.customers, so 0007's
+-- RENAME users → customers failed with "already exists" and was recorded
+-- without replacing private.handle_new_user. Signup then inserted into
+-- staff public.users (no avatar_url) and Auth Admin returned 500.
+-- CREATE OR REPLACE is safe if 0007 actually applied.
 
 CREATE OR REPLACE FUNCTION private.handle_new_user()
 RETURNS trigger
