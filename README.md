@@ -9,7 +9,9 @@ Take-home ของ AI Fullstack Engineer ตาม Assessment + PRD — ข้�
 
 ผู้ใช้ล็อกอินแล้วค้นหาตู้ใกล้สถานที่ในกรุงเทพ ดูช่องว่างแยก Small / Medium / Large เลือกวันเวลา (ล่วงหน้าได้ 7 วัน ระยะ 1–24 ชม.) เห็นเรทกับยอดรวม แล้วยืนยันการจอง ได้หมายเลขการจอง กรอกฟอร์มชำระแล้วฟังก์ชันบน Supabase เขียนรายการชำระจึงจะได้รหัสเปิดตู้ เปิดตู้เพื่อฝากหรือรับของ และดูประวัติหรือยกเลิกใบที่ยังไม่จ่าย
 
-**ทำในรอบนี้:** ค้นหา · รายละเอียด + Available Time · จอง · ยืนยัน · ฟอร์มชำระ · ชำระบน Supabase · เปิดตู้จำลอง · ฝากของ · รับของ · ประวัติ · ยกเลิก · กันจองซ้อนที่ช่อง · กันกดซ้ำ · Auth จริง
+**ทำในรอบนี้ — ฝั่งลูกค้า:** ค้นหา · รายละเอียด + Available Time · จอง · ยืนยัน · ฟอร์มชำระ · ชำระบน Supabase · เปิดตู้จำลอง · ฝากของ · รับของ · ประวัติ · ยกเลิก · กันจองซ้อนที่ช่อง · กันกดซ้ำ · Auth จริง
+
+**ทำในรอบนี้ — ฝั่งแอดมิน:** สรุปภาพรวม (สถานี/การจอง/รายได้) · CRUD สถานี · เพิ่ม/ลบช่องล็อกเกอร์ · ตั้งเรทราคาตามขนาด · ดูการจองและการชำระของลูกค้าทุกคน · สร้าง/ลบผู้ใช้ทดสอบและให้-ถอดสิทธิ์แอดมิน
 
 **ไม่ทำตาม PRD §19:** Payment Gateway จริง · QR / Bluetooth Unlock จริง · Hardware · Push Notification จริง · Google Maps API จริง · Production Deployment
 
@@ -42,6 +44,9 @@ Supabase   Auth + Postgres + Realtime
 |------|---------|--------|
 | Monorepo | pnpm workspace | สองแอปหนึ่งสัญญา HTTP ไม่แยก git repo |
 | Frontend | React 19 + Vite + TypeScript | ทำ 4 หน้าจอ + ประวัติได้เร็ว มี Vite 8 อยู่แล้ว |
+| Routing | React Router 7 | เส้นทางลูกค้ากับแอดมินแยก layout กันด้วย guard คนละตัว |
+| Server state | TanStack Query 5 | cache + invalidate หลัง mutation ที่เดียว · Realtime ยิงแค่สัญญาณให้ refetch |
+| Toast | `sonner` | แจ้งผลบันทึก/ลบในหน้าแอดมิน ไม่ต้องมีแบนเนอร์ค้างในทุกหน้า |
 | Ticket QR | `qrcode.react` | วาด QR พร้อมเพย์จำลองบนหน้าจ่าย และ QR ตั๋วเปิดตู้หลังชำระ |
 | Styling | Tailwind CSS v4 | token ใน `index.css` · class ร่วมใน `Page.tsx` — ดู [docs/design.md](./docs/design.md) |
 | Backend | NestJS | guard / pipe / interceptor / Swagger / Jest อยู่ในที่เดียว |
@@ -242,10 +247,11 @@ pnpm --filter @lockgo/api test:e2e -- reservations.e2e-spec.ts
 job `e2e` ไม่ต้องใช้ secret ใน GitHub เพราะ key ของ local stack เป็นค่าคงที่ของ CLI —
 ขั้นตอนเดียวกับ README §6 ทางที่ 2 เป๊ะ ๆ ถ้า CI เขียว แปลว่าเส้นทางที่เขียนไว้ในเอกสารนี้รันได้จริง
 
-ตรวจหน้าบ้าน
+ตรวจหน้าบ้าน — ยังไม่มี unit test ฝั่ง web ใช้ typecheck + lint + build เป็นด่านแทน
 
 ```bash
-pnpm --filter @lockgo/web build
+pnpm --filter @lockgo/web lint     # oxlint
+pnpm --filter @lockgo/web build    # tsc -b แล้วค่อย vite build
 ```
 
 ---
@@ -277,10 +283,16 @@ Swagger UI: http://localhost:3000/api/docs
 | GET | `/api/admin/summary` | ตัวเลขสรุป: สถานีตามสถานะ, การจองที่ใช้งานวันนี้, รายได้วันนี้/เดือนนี้, การจองทั้งหมด |
 | GET, POST | `/api/admin/stations` | ดูรายการ / เพิ่มสถานี |
 | GET, PATCH | `/api/admin/stations/{id}` | รายละเอียด (รวมช่อง+ราคา) / แก้ไขสถานี |
+| DELETE | `/api/admin/stations/{id}` | ลบสถานี — ติดการจองอยู่ตอบ `409 HAS_RESERVATIONS` |
 | POST | `/api/admin/stations/{id}/compartments` | เพิ่มช่องล็อกเกอร์ |
+| DELETE | `/api/admin/stations/{id}/compartments/{compartmentId}` | ลบช่อง — ติดการจองอยู่ตอบ `409 HAS_RESERVATIONS` |
 | PUT | `/api/admin/stations/{id}/pricing/{size}` | ตั้ง/แก้ราคาต่อชั่วโมงตามขนาด |
 | GET | `/api/admin/reservations` | การจองของลูกค้าทุกคน กรองสถานะ/สถานี/ช่วงเวลาได้ |
 | GET | `/api/admin/payments` | ประวัติการชำระเงินของลูกค้าทุกคน |
+| GET | `/api/admin/customers` | รายชื่อผู้ใช้ ค้นหาด้วยอีเมลหรือชื่อ |
+| POST | `/api/admin/customers` | สร้างผู้ใช้ทดสอบ (ยืนยันอีเมลให้เลย) — ส่ง `staff_role: "admin"` เพื่อให้สิทธิ์แอดมินตั้งแต่แรก · ตอบรหัสผ่านกลับมาครั้งเดียว |
+| PATCH | `/api/admin/customers/{id}` | แก้ชื่อ/สถานะ · `staff_role: "admin" \| "none"` = ให้/ถอดสิทธิ์แอดมิน |
+| DELETE | `/api/admin/customers/{id}` | ลบผู้ใช้ทั้งใน Auth และฐานข้อมูล — ติดการจองอยู่ตอบ `409 HAS_RESERVATIONS` |
 
 Error รูปเดียวทั้งระบบ: `{ statusCode, code, message }`
 
@@ -289,6 +301,11 @@ Error รูปเดียวทั้งระบบ: `{ statusCode, code, mes
 ## 10. AI Tools
 
 ใช้ Cursor Agent อ่าน Assessment + PRD แล้วลงมือตามบล็อก คนล็อกกฎใน `docs/requirements.md` §25
+
+รอบหลัง (หน้าแอดมิน + รีแฟกเตอร์) ใช้ Claude ผ่าน Cowork — แยกชั้นกลางของหน้าแอดมิน
+(`lib/adminQuery.ts`, `ui/AdminDataTable.tsx`), ไล่หาสาเหตุที่ `/admin` ช้า (guard ยิง Supabase ทุก request,
+`GET /admin/stations` ดึงทั้งตารางมา slice ใน JS, คีย์ cache ผูกกับ access token) และสรุปกฎธุรกิจกับ schema
+คนเป็นคนตัดสินใจว่าจะรับข้อไหน
 
 | ไฟล์ | เนื้อหา |
 |------|---------|
