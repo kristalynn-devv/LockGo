@@ -8,6 +8,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 import { ApiError } from '../common/http-error';
 import { dbEnv } from '../db/env';
+import { authUserCache } from './auth-cache';
 
 export type AuthUser = {
   id: string;
@@ -40,6 +41,12 @@ export class AuthGuard implements CanActivate {
       );
     }
 
+    const cached = authUserCache.get(token);
+    if (cached) {
+      request.user = cached;
+      return true;
+    }
+
     const { data, error } = await this.supabase().auth.getUser(token);
     if (error || !data.user) {
       throw new ApiError(
@@ -49,7 +56,9 @@ export class AuthGuard implements CanActivate {
       );
     }
 
-    request.user = { id: data.user.id, email: data.user.email };
+    const user = { id: data.user.id, email: data.user.email };
+    authUserCache.set(token, user);
+    request.user = user;
     return true;
   }
 }

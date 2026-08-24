@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { count, desc, eq, inArray } from 'drizzle-orm';
 import { ApiError } from '../../common/http-error';
 import { getDb, getSql } from '../../db/database';
 import { compartments, lockerStations, stationPricing } from '../../db/schema';
@@ -26,37 +26,48 @@ export class AdminStationsService {
     const db = getDb();
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    const where = query.status
+      ? eq(lockerStations.status, query.status)
+      : undefined;
 
-    const stations = query.status
-      ? await db
-          .select()
-          .from(lockerStations)
-          .where(eq(lockerStations.status, query.status))
-      : await db.select().from(lockerStations);
+    // เดิมดึงสถานีทั้งตารางมาแล้วค่อย slice ใน JS และไม่มี ORDER BY
+    // → ช้าเมื่อข้อมูลเยอะ และลำดับสลับไปมาหลังเพิ่ม/แก้ไข จนดูเหมือนข้อมูลหาย
+    const [rows, totalRows] = await Promise.all([
+      db
+        .select()
+        .from(lockerStations)
+        .where(where)
+        .orderBy(desc(lockerStations.createdAt), desc(lockerStations.id))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      db.select({ n: count() }).from(lockerStations).where(where),
+    ]);
 
-    const paged = stations.slice((page - 1) * limit, page * limit);
-    const stationIds = paged.map((station) => station.id);
-    const compartmentRows = stationIds.length
+    const stationIds = rows.map((station) => station.id);
+    const compartmentCounts = stationIds.length
       ? await db
-          .select()
+          .select({ stationId: compartments.stationId, n: count() })
           .from(compartments)
           .where(inArray(compartments.stationId, stationIds))
+          .groupBy(compartments.stationId)
       : [];
 
-    const items = paged.map((station) => ({
+    const countByStation = new Map(
+      compartmentCounts.map((row) => [row.stationId, row.n]),
+    );
+
+    const items = rows.map((station) => ({
       id: station.id,
       name: station.name,
       address: station.address,
       latitude: Number(station.latitude),
       longitude: Number(station.longitude),
       status: station.status,
-      compartment_count: compartmentRows.filter(
-        (row) => row.stationId === station.id,
-      ).length,
+      compartment_count: countByStation.get(station.id) ?? 0,
       created_at: station.createdAt.toISOString(),
     }));
 
-    return { items, page, limit, total: stations.length };
+    return { items, page, limit, total: totalRows[0]?.n ?? 0 };
   }
 
   async detail(id: string) {

@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { forgetUser } from '../../auth/auth-cache';
 import { ApiError } from '../../common/http-error';
 import { getDb, getSql } from '../../db/database';
 import { dbEnv } from '../../db/env';
@@ -92,12 +93,21 @@ export class AdminCustomersService {
       await this.promoteToStaff(authUser.id, dto.display_name);
     }
 
+    // แถวใน public.customers ถูกสร้างโดยทริกเกอร์ on_auth_user_created
+    // ต้องอ่านของจริงกลับมา ไม่ใช่ประกอบเอง — เดิมไม่มี created_at ทำให้แถวใหม่แสดงผลเพี้ยน
+    const created = await this.detail(authUser.id).catch(() => null);
+    if (created) {
+      return { ...created, password: dto.password };
+    }
+
+    // ทริกเกอร์ยังไม่ทันสร้างแถว - ตอบด้วยข้อมูลที่รู้แน่ ๆ ดีกว่าโยน error ทั้งที่สร้างสำเร็จแล้ว
     return {
       id: authUser.id,
       email: dto.email,
       display_name: dto.display_name,
       status: 'active',
       role: dto.staff_role === 'admin' ? ('admin' as const) : ('user' as const),
+      created_at: new Date().toISOString(),
       password: dto.password,
     };
   }
@@ -123,6 +133,10 @@ export class AdminCustomersService {
       await this.promoteToStaff(id, row?.displayName ?? dto.display_name ?? 'Staff');
     } else if (dto.staff_role === 'none') {
       await db.delete(users).where(eq(users.id, id));
+    }
+
+    if (dto.staff_role != null || dto.status != null) {
+      forgetUser(id);
     }
 
     return this.detail(id);
@@ -189,6 +203,7 @@ export class AdminCustomersService {
       );
     }
 
+    forgetUser(id);
     return { ok: true };
   }
 

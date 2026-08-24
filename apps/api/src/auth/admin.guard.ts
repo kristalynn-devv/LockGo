@@ -9,6 +9,7 @@ import { Request } from 'express';
 import { ApiError } from '../common/http-error';
 import { getDb } from '../db/database';
 import { users } from '../db/schema';
+import { adminRoleCache } from './auth-cache';
 import { AuthUser } from './auth.guard';
 
 @Injectable()
@@ -26,20 +27,29 @@ export class AdminGuard implements CanActivate {
       );
     }
 
-    const db = getDb();
-    const [row] = await db
-      .select({ role: users.role, status: users.status })
-      .from(users)
-      .where(eq(users.id, user.id));
-
-    if (!row || row.role !== 'admin' || row.status !== 'active') {
-      throw new ApiError(
-        HttpStatus.FORBIDDEN,
-        'FORBIDDEN',
-        'Admin access required',
-      );
+    const cached = adminRoleCache.get(user.id);
+    if (cached === true) {
+      return true;
     }
 
-    return true;
+    if (cached === undefined) {
+      const db = getDb();
+      const [row] = await db
+        .select({ role: users.role, status: users.status })
+        .from(users)
+        .where(eq(users.id, user.id));
+
+      const isAdmin = row?.role === 'admin' && row.status === 'active';
+      adminRoleCache.set(user.id, isAdmin);
+      if (isAdmin) {
+        return true;
+      }
+    }
+
+    throw new ApiError(
+      HttpStatus.FORBIDDEN,
+      'FORBIDDEN',
+      'Admin access required',
+    );
   }
 }
