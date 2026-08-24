@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -46,6 +47,11 @@ export class AdminStationsController {
     return this.stations.update(id, dto);
   }
 
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.stations.remove(id);
+  }
+
   @Post(':id/compartments')
   addCompartment(@Param('id') id: string, @Body() dto: CreateCompartmentDto) {
     return this.stations.addCompartment(id, dto);
@@ -58,5 +64,13 @@ export class AdminStationsController {
     @Body() dto: UpsertPricingDto,
   ) {
     return this.stations.upsertPricing(id, size, dto);
+  }
+
+  @Delete(':id/compartments/:compartmentId')
+  removeCompartment(
+    @Param('id') id: string,
+    @Param('compartmentId') compartmentId: string,
+  ) {
+    return this.stations.removeCompartment(id, compartmentId);
   }
 }

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { AdminCustomersController } from './customers/admin-customers.controller';
+import { AdminCustomersService } from './customers/admin-customers.service';
 import { AdminPaymentsController } from './payments/admin-payments.controller';
 import { AdminPaymentsService } from './payments/admin-payments.service';
 import { AdminReservationsController } from './reservations/admin-reservations.controller';
@@ -13,12 +15,14 @@ import { AdminSummaryService } from './summary/admin-summary.service';
     AdminStationsController,
     AdminReservationsController,
     AdminPaymentsController,
+    AdminCustomersController,
     AdminSummaryController,
   ],
   providers: [
     AdminStationsService,
     AdminReservationsService,
     AdminPaymentsService,
+    AdminCustomersService,
     AdminSummaryService,
   ],
 })

@@ -146,3 +146,16 @@ export type AdminSummary = {
   revenue_this_month: number
   reservations_total: number
 }
+
+export type AdminCustomer = {
+  id: string
+  email: string
+  display_name: string | null
+  status: string
+  role: 'user' | 'admin'
+  created_at: string
+}
+
+export type AdminCustomerCreateResult = AdminCustomer & {
+  password: string
+}

@@ -1,135 +1,83 @@
-import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
 import { listAdminReservations } from '../../lib/api'
-import { useAuth } from '../../lib/auth'
+import { ADMIN_RESERVATION_STATUS_OPTIONS } from '../../lib/adminFilterOptions'
+import { useAdminList } from '../../lib/adminQuery'
 import { formatTimeRange, money, statusLabel, statusTone } from '../../lib/format'
-import { Icon } from '../../ui/icons'
-import { MenuSelect } from '../../ui/MenuSelect'
-import {
-  cardClass,
-  cardGridClass,
-  cardTitleClass,
-  filterRowClass,
-  labelClass,
-  Page,
-  priceClass,
-  secondaryButtonClass,
-} from '../../ui/Page'
-import { Badge, EmptyState, ErrorState, SkeletonList } from '../../ui/states'
+import type { AdminReservation } from '../../lib/types'
+import { AdminDataTable, type AdminColumn } from '../../ui/AdminDataTable'
+import { AdminFilterBar, AdminFilterChips } from '../../ui/AdminFilters'
+import { Page } from '../../ui/Page'
+import { Badge } from '../../ui/states'
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'ทุกสถานะ' },
-  { value: 'Reserved', label: 'จองอยู่' },
-  { value: 'Active', label: 'ใช้งานอยู่' },
-  { value: 'Completed', label: 'เสร็จแล้ว' },
-  { value: 'Cancelled', label: 'ยกเลิกแล้ว' },
-  { value: 'Expired', label: 'หมดอายุ' },
+const COLUMNS: AdminColumn<AdminReservation>[] = [
+  {
+    header: 'หมายเลข',
+    card: 'title',
+    className: 'font-mono text-xs text-ink-muted',
+    cell: (item) => item.reservation_number,
+  },
+  { header: 'สถานี', className: 'font-medium', cell: (item) => item.station_name },
+  {
+    header: 'ลูกค้า',
+    hide: 'lg',
+    className: 'max-w-[160px] truncate text-ink-muted',
+    cell: (item) => item.customer_name ?? item.user_id.slice(0, 8),
+  },
+  {
+    header: 'ช่วงเวลา',
+    className: 'min-w-[180px] tabular-nums',
+    cell: (item) => formatTimeRange(item.start_time, item.end_time),
+  },
+  {
+    header: 'สถานะ',
+    card: 'badge',
+    cell: (item) => (
+      <Badge tone={statusTone(item.status, item.paid)}>{statusLabel(item.status, item.paid)}</Badge>
+    ),
+  },
+  {
+    header: 'ช่อง',
+    hide: 'md',
+    className: 'text-ink-muted',
+    cell: (item) => `${item.size} · ${item.compartment_label}`,
+  },
+  {
+    header: 'ราคารวม',
+    align: 'right',
+    className: 'font-semibold tabular-nums',
+    cell: (item) => money(item.total_price),
+  },
 ]
 
 export function AdminReservationsPage() {
-  const { session } = useAuth()
-  const token = session?.access_token ?? ''
-  const [searchParams, setSearchParams] = useSearchParams()
-  const status = searchParams.get('status') ?? ''
-  const page = Number(searchParams.get('page') ?? '1')
-
-  const setStatus = (next: string) => {
-    setSearchParams(next ? { status: next } : {}, { replace: true })
-  }
-  const setPage = (next: number) => {
-    const params = new URLSearchParams(searchParams)
-    if (next <= 1) params.delete('page')
-    else params.set('page', String(next))
-    setSearchParams(params, { replace: true })
-  }
-
-  const reservations = useQuery({
-    queryKey: ['admin', 'reservations', status, page, token],
-    queryFn: () =>
-      listAdminReservations(token, {
-        status: status || undefined,
-        page: String(page),
-        limit: '20',
-      }),
-    enabled: Boolean(token),
+  const list = useAdminList({
+    resource: 'reservations',
+    filters: ['status'],
+    fetch: (token, query) => listAdminReservations(token, query),
   })
 
   return (
     <Page title="การจองทั้งหมด" wide>
-      <div className={`${filterRowClass} mb-4`}>
-        <MenuSelect
-          variant="pill"
+      <AdminFilterBar active={list.filtersActive} onClear={list.clearFilters}>
+        <AdminFilterChips
           label="สถานะ"
-          value={status}
-          options={STATUS_OPTIONS}
-          marked={Boolean(status)}
-          onChange={setStatus}
+          value={list.value('status')}
+          options={ADMIN_RESERVATION_STATUS_OPTIONS}
+          onChange={(next) => list.setFilter('status', next)}
         />
-      </div>
+      </AdminFilterBar>
 
-      {reservations.isLoading ? <SkeletonList count={4} /> : null}
-
-      {reservations.isError ? (
-        <ErrorState message="โหลดรายการจองไม่สำเร็จ" onRetry={() => void reservations.refetch()} />
-      ) : null}
-
-      {reservations.isSuccess && reservations.data.items.length === 0 ? (
-        <EmptyState message="ไม่พบรายการจอง" />
-      ) : null}
-
-      {reservations.isSuccess && reservations.data.items.length > 0 ? (
-        <>
-          <div className={cardGridClass}>
-            {reservations.data.items.map((item) => (
-              <div key={item.id} className={`${cardClass} p-4`}>
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className={`min-w-0 truncate ${cardTitleClass}`}>{item.station_name}</h2>
-                  <Badge tone={statusTone(item.status, item.paid)}>
-                    {statusLabel(item.status, item.paid)}
-                  </Badge>
-                </div>
-                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
-                  <Icon name="user" className="size-4" />
-                  <span className="truncate">{item.customer_name ?? item.user_id}</span>
-                </p>
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-medium tabular-nums">
-                  <Icon name="clock" className="size-4 text-ink-muted" />
-                  <span className="truncate">{formatTimeRange(item.start_time, item.end_time)}</span>
-                </p>
-                <p className="mt-2 text-xs text-ink-faint tabular-nums">{item.reservation_number}</p>
-                <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
-                  <div>
-                    <p className={labelClass}>ราคารวม</p>
-                    <p className={priceClass}>{money(item.total_price)}</p>
-                  </div>
-                  <span className="text-sm text-ink-muted">
-                    {item.size} · {item.compartment_label}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              className={secondaryButtonClass}
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              ก่อนหน้า
-            </button>
-            <span className="text-sm text-ink-muted">หน้า {page}</span>
-            <button
-              type="button"
-              className={secondaryButtonClass}
-              disabled={reservations.data.items.length < 20}
-              onClick={() => setPage(page + 1)}
-            >
-              ถัดไป
-            </button>
-          </div>
-        </>
-      ) : null}
+      <AdminDataTable
+        query={list.query}
+        columns={COLUMNS}
+        rowKey={(item) => item.id}
+        errorMessage="โหลดรายการจองไม่สำเร็จ"
+        emptyMessage={list.filtersActive ? 'ไม่พบการจองตามตัวกรอง' : 'ยังไม่มีรายการจอง'}
+        emptyHint={list.filtersActive ? 'ลองเลือกสถานะอื่นหรือล้างตัวกรอง' : undefined}
+        emptyAction={
+          list.filtersActive ? { label: 'ล้างตัวกรอง', onClick: list.clearFilters } : undefined
+        }
+        pagination={list.pagination}
+      />
     </Page>
   )
 }

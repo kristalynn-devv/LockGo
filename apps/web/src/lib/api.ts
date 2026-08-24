@@ -1,5 +1,7 @@
 import { env } from './env'
 import type {
+  AdminCustomer,
+  AdminCustomerCreateResult,
   AdminReservation,
   AdminStation,
   AdminStationListItem,
@@ -39,6 +41,8 @@ const MESSAGES: Record<string, string> = {
   IDEMPOTENCY_KEY_REQUIRED: 'ไม่สามารถส่งคำขอได้ กรุณาลองใหม่',
   FORBIDDEN: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้',
   DUPLICATE_LABEL: 'มีช่องล็อกเกอร์ชื่อนี้ในสถานีนี้แล้ว',
+  HAS_RESERVATIONS: 'ลบไม่ได้เพราะมีการจองที่เกี่ยวข้องอยู่',
+  EMAIL_EXISTS: 'อีเมลนี้มีในระบบแล้ว',
 }
 
 function friendlyMessage(code?: string): string {
@@ -249,4 +253,71 @@ export function listAdminPayments(token: string, query: Record<string, string | 
 
 export function getAdminSummary(token: string) {
   return request<AdminSummary>('/admin/summary', { token })
+}
+
+export function listAdminCustomers(
+  token: string,
+  query: Record<string, string | undefined>,
+) {
+  return request<{ items: AdminCustomer[]; page: number; limit: number; total: number }>(
+    `/admin/customers${toQueryString(query)}`,
+    { token },
+  )
+}
+
+export function createAdminCustomer(
+  token: string,
+  body: {
+    email: string
+    password: string
+    display_name: string
+    staff_role?: 'admin'
+  },
+) {
+  return request<AdminCustomerCreateResult>('/admin/customers', {
+    token,
+    method: 'POST',
+    body,
+  })
+}
+
+export function updateAdminCustomer(
+  token: string,
+  id: string,
+  body: Partial<{
+    display_name: string
+    status: 'active' | 'disabled'
+    staff_role: 'admin' | 'none'
+  }>,
+) {
+  return request<AdminCustomer>(`/admin/customers/${id}`, {
+    token,
+    method: 'PATCH',
+    body,
+  })
+}
+
+export function deleteAdminCustomer(token: string, id: string) {
+  return request<{ ok: true }>(`/admin/customers/${id}`, {
+    token,
+    method: 'DELETE',
+  })
+}
+
+export function deleteAdminStation(token: string, id: string) {
+  return request<{ ok: true }>(`/admin/stations/${id}`, {
+    token,
+    method: 'DELETE',
+  })
+}
+
+export function deleteAdminCompartment(
+  token: string,
+  stationId: string,
+  compartmentId: string,
+) {
+  return request<AdminStation>(`/admin/stations/${stationId}/compartments/${compartmentId}`, {
+    token,
+    method: 'DELETE',
+  })
 }

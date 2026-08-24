@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { eq, inArray } from 'drizzle-orm';
 import { ApiError } from '../../common/http-error';
-import { getDb } from '../../db/database';
+import { getDb, getSql } from '../../db/database';
 import { compartments, lockerStations, stationPricing } from '../../db/schema';
 import { CreateCompartmentDto } from './dto/create-compartment.dto';
 import { CreateStationDto } from './dto/create-station.dto';
@@ -163,6 +163,63 @@ export class AdminStationsService {
         set: { ratePerHour: String(dto.rate_per_hour) },
       });
 
+    return this.detail(stationId);
+  }
+
+  async remove(stationId: string) {
+    await this.findStation(stationId);
+    const sql = getSql();
+
+    const rows = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n
+      FROM public.reservations r
+      INNER JOIN public.compartments c ON c.id = r.compartment_id
+      WHERE c.station_id = ${stationId}::uuid
+    `;
+    if ((rows[0]?.n ?? 0) > 0) {
+      throw new ApiError(
+        HttpStatus.CONFLICT,
+        'HAS_RESERVATIONS',
+        'Cannot delete a station with reservations',
+      );
+    }
+
+    const db = getDb();
+    await db.delete(lockerStations).where(eq(lockerStations.id, stationId));
+    return { ok: true };
+  }
+
+  async removeCompartment(stationId: string, compartmentId: string) {
+    await this.findStation(stationId);
+    const db = getDb();
+    const sql = getSql();
+
+    const [compartment] = await db
+      .select()
+      .from(compartments)
+      .where(eq(compartments.id, compartmentId));
+    if (!compartment || compartment.stationId !== stationId) {
+      throw new ApiError(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Compartment not found',
+      );
+    }
+
+    const reservationRows = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n
+      FROM public.reservations
+      WHERE compartment_id = ${compartmentId}::uuid
+    `;
+    if ((reservationRows[0]?.n ?? 0) > 0) {
+      throw new ApiError(
+        HttpStatus.CONFLICT,
+        'HAS_RESERVATIONS',
+        'Cannot delete a compartment with reservations',
+      );
+    }
+
+    await db.delete(compartments).where(eq(compartments.id, compartmentId));
     return this.detail(stationId);
   }
 

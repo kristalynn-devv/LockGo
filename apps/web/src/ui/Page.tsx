@@ -40,6 +40,17 @@ export const primaryButtonClass =
 export const secondaryButtonClass =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
 
+/** แอคชันทำลายแบบเด่นชัด - โทนเดียวกันทั้งสองธีม (bg-danger ในดาร์กจะสว่างเกิน) */
+export const dangerButtonClass =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-danger/40 bg-danger-soft px-4 py-2.5 text-sm font-semibold text-danger transition-colors hover:border-danger disabled:cursor-not-allowed disabled:opacity-50'
+
+/** ปุ่มในแถวตาราง - เตี้ยกว่าปุ่มหลักแต่ยังกดง่าย */
+export const tableActionClass =
+  'inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-line-strong bg-surface px-3 text-xs font-medium text-ink transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50'
+
+export const tableDangerActionClass =
+  'inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-line bg-surface px-3 text-xs font-medium text-ink-muted transition-colors hover:border-danger/40 hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
+
 export const linkButtonClass =
   'inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-text transition-colors hover:underline'
 

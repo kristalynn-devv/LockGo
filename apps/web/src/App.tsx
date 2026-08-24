@@ -8,6 +8,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { useIsAdmin } from './lib/admin'
+import { AdminFlashProvider } from './lib/adminFlash'
 import { AuthProvider, useAuth } from './lib/auth'
 import { RealtimeBridge } from './lib/realtime'
 import { ThemeProvider } from './lib/theme'
@@ -24,6 +25,7 @@ import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage'
 import { AdminReservationsPage } from './pages/admin/AdminReservationsPage'
 import { AdminStationDetailPage } from './pages/admin/AdminStationDetailPage'
 import { AdminStationsPage } from './pages/admin/AdminStationsPage'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { AdminHeader } from './ui/AdminHeader'
 import { Header, TabBar } from './ui/Header'
 import { IconSprite } from './ui/icons'
@@ -104,10 +106,12 @@ function AdminLayout() {
   return (
     <FooterSlotProvider>
       <ScrollToTop />
-      <div className="flex min-h-svh min-w-0 flex-col">
-        <AdminHeader />
-        <Outlet />
-      </div>
+      <AdminFlashProvider>
+        <div className="flex min-h-svh min-w-0 flex-col">
+          <AdminHeader />
+          <Outlet />
+        </div>
+      </AdminFlashProvider>
     </FooterSlotProvider>
   )
 }
@@ -134,6 +138,7 @@ const router = createBrowserRouter([
       { path: '/admin/stations/:id', element: <AdminStationDetailPage /> },
       { path: '/admin/reservations', element: <AdminReservationsPage /> },
       { path: '/admin/payments', element: <AdminPaymentsPage /> },
+      { path: '/admin/users', element: <AdminUsersPage /> },
     ],
   },
 ])

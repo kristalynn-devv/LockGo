@@ -171,3 +171,26 @@
     transform: none;
   }
 }
+
+/* Sonner — ใช้ token ของแอป กัน theme ของ library ทับเป็นพื้นขาว */
+@layer components {
+  [data-sonner-toast][data-type='success'] {
+    background: var(--ok-soft) !important;
+    color: var(--ok) !important;
+    border-color: color-mix(in srgb, var(--ok) 45%, transparent) !important;
+  }
+
+  [data-sonner-toast][data-type='error'] {
+    background: var(--danger-soft) !important;
+    color: var(--danger) !important;
+    border-color: color-mix(in srgb, var(--danger) 45%, transparent) !important;
+  }
+
+  [data-sonner-toast][data-type='error'] [data-title] {
+    color: var(--danger) !important;
+  }
+
+  [data-sonner-toast][data-type='success'] [data-title] {
+    color: var(--ok) !important;
+  }
+}

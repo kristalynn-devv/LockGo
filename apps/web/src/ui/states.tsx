@@ -201,3 +201,28 @@ export function FormError({ message }: { message: string }) {
     </p>
   )
 }
+
+/** แบนเนอร์ error จาก mutation (ลบ/อัปเดต) — React Query throw แล้ว แต่ต้อง render เอง */
+export function MutationError({
+  message,
+  onDismiss,
+}: {
+  message: string | null
+  onDismiss?: () => void
+}) {
+  if (!message) return null
+  return (
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <FormError message={message} />
+      {onDismiss ? (
+        <button
+          type="button"
+          className="shrink-0 text-sm text-ink-muted hover:text-ink"
+          onClick={onDismiss}
+        >
+          ปิด
+        </button>
+      ) : null}
+    </div>
+  )
+}

@@ -1,65 +1,130 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ApiRequestError, createAdminStation, listAdminStations } from '../../lib/api'
-import { useAuth } from '../../lib/auth'
+import { createAdminStation, deleteAdminStation, listAdminStations } from '../../lib/api'
+import { ADMIN_STATION_STATUS_OPTIONS } from '../../lib/adminFilterOptions'
+import { useAdminList, useAdminMutation } from '../../lib/adminQuery'
 import { statusLabel, statusTone } from '../../lib/format'
+import type { AdminStationListItem } from '../../lib/types'
+import { AdminDataTable, type AdminColumn } from '../../ui/AdminDataTable'
+import { AdminFilterBar, AdminFilterChips } from '../../ui/AdminFilters'
+import { useConfirm } from '../../ui/ConfirmDialog'
 import {
   cardClass,
-  cardCtaClass,
-  cardGridClass,
-  cardHitClass,
-  cardTitleClass,
   Field,
   fieldClass,
-  filterRowClass,
-  labelClass,
   Page,
   primaryButtonClass,
   secondaryButtonClass,
+  tableActionClass,
+  tableDangerActionClass,
 } from '../../ui/Page'
-import { Icon } from '../../ui/icons'
-import { Chip, EmptyState, ErrorState, FormError, SkeletonList } from '../../ui/states'
-
-const STATUS_FILTERS = [
-  { id: 'Open', label: 'เปิด' },
-  { id: 'Maintenance', label: 'ซ่อมบำรุง' },
-  { id: 'Closed', label: 'ปิด' },
-] as const
+import { Badge } from '../../ui/states'
 
 export function AdminStationsPage() {
-  const { session } = useAuth()
-  const token = session?.access_token ?? ''
-  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const status = searchParams.get('status') ?? ''
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(searchParams.get('new') === '1')
+  const { confirm, dialog } = useConfirm()
 
-  const setStatus = (next: string) => {
-    setSearchParams(next ? { status: next } : {}, { replace: true })
+  const list = useAdminList({
+    resource: 'stations',
+    filters: ['status'],
+    fetch: (token, query) => listAdminStations(token, query),
+  })
+
+  const toggleCreating = (next: boolean) => {
+    setCreating(next)
+    if (!next && searchParams.get('new')) {
+      const params = new URLSearchParams(searchParams)
+      params.delete('new')
+      setSearchParams(params, { replace: true })
+    }
   }
 
-  const stations = useQuery({
-    queryKey: ['admin', 'stations', status, token],
-    queryFn: () => listAdminStations(token, { status: status || undefined }),
-    enabled: Boolean(token),
+  const create = useAdminMutation({
+    run: (token, body: { name: string; address: string; latitude: number; longitude: number }) =>
+      createAdminStation(token, body),
+    success: 'สร้างสถานีสำเร็จ',
+    invalidate: [list.cacheKey],
   })
 
-  const create = useMutation({
-    mutationFn: (body: { name: string; address: string; latitude: number; longitude: number }) =>
-      createAdminStation(token, body),
-    onSuccess: () => {
-      setCreating(false)
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'stations'] })
-    },
+  const remove = useAdminMutation({
+    run: (token, id: string) => deleteAdminStation(token, id),
+    success: 'ลบสถานีสำเร็จ',
+    invalidate: [list.cacheKey],
   })
+
+  const askRemove = async (station: AdminStationListItem) => {
+    const ok = await confirm({
+      title: `ลบสถานี "${station.name}"?`,
+      message: 'ลบได้เฉพาะสถานีที่ไม่มีการจอง — การลบย้อนกลับไม่ได้',
+      confirmLabel: 'ลบสถานี',
+      danger: true,
+    })
+    if (ok) remove.mutate(station.id)
+  }
+
+  const columns: AdminColumn<AdminStationListItem>[] = [
+    {
+      header: 'ชื่อสถานี',
+      card: 'title',
+      cell: (station) => (
+        <Link
+          to={`/admin/stations/${station.id}`}
+          className="font-medium text-accent-text hover:underline"
+        >
+          {station.name}
+        </Link>
+      ),
+    },
+    {
+      header: 'ที่อยู่',
+      hide: 'md',
+      className: 'max-w-xs truncate text-ink-muted',
+      cell: (station) => station.address,
+    },
+    {
+      header: 'สถานะ',
+      card: 'badge',
+      cell: (station) => <Badge tone={statusTone(station.status)}>{statusLabel(station.status)}</Badge>,
+    },
+    {
+      header: 'ช่อง',
+      align: 'right',
+      className: 'tabular-nums',
+      cell: (station) => station.compartment_count,
+    },
+    {
+      header: 'จัดการ',
+      align: 'right',
+      card: 'actions',
+      cell: (station) => (
+        <div className="flex items-center justify-end gap-2">
+          <Link to={`/admin/stations/${station.id}`} className={tableActionClass}>
+            แก้ไข
+          </Link>
+          <button
+            type="button"
+            className={tableDangerActionClass}
+            disabled={remove.isPending}
+            onClick={() => void askRemove(station)}
+          >
+            ลบ
+          </button>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <Page
       title="สถานีตู้ล็อกเกอร์"
       wide
       action={
-        <button type="button" className={secondaryButtonClass} onClick={() => setCreating((v) => !v)}>
+        <button
+          type="button"
+          className={creating ? secondaryButtonClass : primaryButtonClass}
+          onClick={() => toggleCreating(!creating)}
+        >
           {creating ? 'ยกเลิก' : '+ เพิ่มสถานี'}
         </button>
       }
@@ -67,82 +132,44 @@ export function AdminStationsPage() {
       {creating ? (
         <CreateStationForm
           pending={create.isPending}
-          error={create.isError ? create.error : null}
-          onSubmit={(body) => create.mutate(body)}
+          onSubmit={(body) =>
+            create.mutate(body, {
+              onSuccess: () => toggleCreating(false),
+            })
+          }
         />
       ) : null}
 
-      <div className={`${filterRowClass} mb-4`}>
-        {STATUS_FILTERS.map((item) => (
-          <Chip
-            key={item.id}
-            compact
-            pressed={status === item.id}
-            onClick={() => setStatus(status === item.id ? '' : item.id)}
-          >
-            {item.label}
-          </Chip>
-        ))}
-      </div>
-
-      {stations.isLoading ? <SkeletonList count={4} /> : null}
-
-      {stations.isError ? (
-        <ErrorState
-          message="โหลดรายการสถานีไม่สำเร็จ"
-          onRetry={() => void stations.refetch()}
+      <AdminFilterBar active={list.filtersActive} onClear={list.clearFilters}>
+        <AdminFilterChips
+          label="สถานะ"
+          value={list.value('status')}
+          options={ADMIN_STATION_STATUS_OPTIONS}
+          onChange={(next) => list.setFilter('status', next)}
         />
-      ) : null}
+      </AdminFilterBar>
 
-      {stations.isSuccess && stations.data.items.length === 0 ? (
-        <EmptyState message="ยังไม่มีสถานีในระบบ" />
-      ) : null}
+      <AdminDataTable
+        query={list.query}
+        columns={columns}
+        rowKey={(station) => station.id}
+        errorMessage="โหลดรายการสถานีไม่สำเร็จ"
+        emptyMessage="ยังไม่มีสถานีในระบบ"
+        emptyHint="เพิ่มสถานีแรกเพื่อเริ่มทดสอบการจอง"
+        emptyAction={{ label: '+ เพิ่มสถานี', onClick: () => toggleCreating(true) }}
+        pagination={list.pagination}
+      />
 
-      {stations.isSuccess && stations.data.items.length > 0 ? (
-        <div className={cardGridClass}>
-          {stations.data.items.map((station) => (
-            <Link
-              key={station.id}
-              to={`/admin/stations/${station.id}`}
-              className={`${cardClass} ${cardHitClass}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <h2 className={`min-w-0 ${cardTitleClass}`}>{station.name}</h2>
-                <span
-                  className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusTone(station.status)}`}
-                >
-                  {statusLabel(station.status)}
-                </span>
-              </div>
-              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
-                <Icon name="pin" className="size-4" />
-                <span className="truncate">{station.address}</span>
-              </p>
-              <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
-                <div>
-                  <p className={labelClass}>ช่องล็อกเกอร์</p>
-                  <p className="text-lg font-semibold">{station.compartment_count}</p>
-                </div>
-                <span className={cardCtaClass}>
-                  จัดการ
-                  <Icon name="arrow" className="size-3.5" />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      {dialog}
     </Page>
   )
 }
 
 function CreateStationForm({
   pending,
-  error,
   onSubmit,
 }: {
   pending: boolean
-  error: unknown
   onSubmit: (body: { name: string; address: string; latitude: number; longitude: number }) => void
 }) {
   const [name, setName] = useState('')
@@ -192,13 +219,6 @@ function CreateStationForm({
           required
         />
       </Field>
-      {error ? (
-        <div className="sm:col-span-2">
-          <FormError
-            message={error instanceof ApiRequestError ? error.message : 'สร้างสถานีไม่สำเร็จ กรุณาลองใหม่'}
-          />
-        </div>
-      ) : null}
       <div className="sm:col-span-2">
         <button type="submit" className={`${primaryButtonClass} w-auto min-w-32`} disabled={pending}>
           {pending ? 'กำลังบันทึก…' : 'บันทึก'}

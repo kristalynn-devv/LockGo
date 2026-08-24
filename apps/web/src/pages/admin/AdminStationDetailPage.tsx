@@ -1,17 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  ApiRequestError,
   createAdminCompartment,
+  deleteAdminCompartment,
   getAdminStation,
   updateAdminStation,
   upsertAdminStationPricing,
 } from '../../lib/api'
-import { useAuth } from '../../lib/auth'
+import { useAdminMutation, useAdminQuery } from '../../lib/adminQuery'
 import { statusLabel, statusTone } from '../../lib/format'
 import type { Size } from '../../lib/types'
 import { SIZES } from '../../lib/types'
+import { AdminTable, AdminTableBody, AdminTableHead, AdminTd, AdminTh } from '../../ui/AdminTable'
+import { useConfirm } from '../../ui/ConfirmDialog'
 import { Icon } from '../../ui/icons'
 import { MenuSelect } from '../../ui/MenuSelect'
 import {
@@ -23,8 +24,10 @@ import {
   Page,
   primaryButtonClass,
   SplitLayout,
+  tableActionClass,
+  tableDangerActionClass,
 } from '../../ui/Page'
-import { Badge, ErrorState, FormError, SkeletonList } from '../../ui/states'
+import { Badge, ErrorState, SkeletonList } from '../../ui/states'
 
 const STATUS_OPTIONS = [
   { value: 'Open', label: 'เปิด' },
@@ -34,33 +37,40 @@ const STATUS_OPTIONS = [
 
 export function AdminStationDetailPage() {
   const { id = '' } = useParams()
-  const { session } = useAuth()
-  const token = session?.access_token ?? ''
-  const queryClient = useQueryClient()
+  const { confirm, dialog } = useConfirm()
 
-  const station = useQuery({
-    queryKey: ['admin', 'stations', id],
-    queryFn: () => getAdminStation(token, id),
-    enabled: Boolean(token && id),
-  })
+  const station = useAdminQuery(
+    ['admin', 'stations', id],
+    (token) => getAdminStation(token, id),
+    { enabled: Boolean(id) },
+  )
 
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['admin', 'stations', id] })
+  const cacheKey = ['admin', 'stations'] as const
 
-  const update = useMutation({
-    mutationFn: (body: Parameters<typeof updateAdminStation>[2]) =>
+  const update = useAdminMutation({
+    run: (token, body: Parameters<typeof updateAdminStation>[2]) =>
       updateAdminStation(token, id, body),
-    onSuccess: invalidate,
+    success: 'บันทึกข้อมูลสถานีสำเร็จ',
+    invalidate: [[...cacheKey]],
   })
 
-  const addCompartment = useMutation({
-    mutationFn: (body: { size: Size; label: string }) => createAdminCompartment(token, id, body),
-    onSuccess: invalidate,
+  const addCompartment = useAdminMutation({
+    run: (token, body: { size: Size; label: string }) => createAdminCompartment(token, id, body),
+    success: 'เพิ่มช่องล็อกเกอร์สำเร็จ',
+    invalidate: [[...cacheKey]],
   })
 
-  const upsertPricing = useMutation({
-    mutationFn: ({ size, rate }: { size: Size; rate: number }) =>
-      upsertAdminStationPricing(token, id, size, rate),
-    onSuccess: invalidate,
+  const removeCompartment = useAdminMutation({
+    run: (token, compartmentId: string) => deleteAdminCompartment(token, id, compartmentId),
+    success: 'ลบช่องล็อกเกอร์สำเร็จ',
+    invalidate: [[...cacheKey]],
+  })
+
+  const upsertPricing = useAdminMutation({
+    run: (token, args: { size: Size; rate: number }) =>
+      upsertAdminStationPricing(token, id, args.size, args.rate),
+    success: (_data, args) => `บันทึกราคา ${args.size} สำเร็จ`,
+    invalidate: [[...cacheKey]],
   })
 
   if (station.isLoading) {
@@ -81,6 +91,16 @@ export function AdminStationDetailPage() {
 
   const data = station.data
 
+  const askRemoveCompartment = async (compartment: { id: string; label: string }) => {
+    const ok = await confirm({
+      title: `ลบช่อง ${compartment.label}?`,
+      message: 'การลบย้อนกลับไม่ได้',
+      confirmLabel: 'ลบช่อง',
+      danger: true,
+    })
+    if (ok) removeCompartment.mutate(compartment.id)
+  }
+
   return (
     <Page
       title={data.name}
@@ -96,94 +116,124 @@ export function AdminStationDetailPage() {
         main={
           <StationForm
             key={data.id}
-            name={data.name}
-            address={data.address}
-            latitude={data.latitude}
-            longitude={data.longitude}
-            status={data.status}
+            station={data}
             pending={update.isPending}
-            error={update.isError ? update.error : null}
             onSubmit={(body) => update.mutate(body)}
           />
         }
         aside={
           <div className="grid gap-3">
             <div className={`${cardClass} p-4`}>
-              <div className="mb-2 flex items-center justify-between">
-                <p className={labelClass}>ช่องล็อกเกอร์</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className={labelClass}>ช่องล็อกเกอร์ ({data.compartments.length})</p>
                 <Badge tone={statusTone(data.status)}>{statusLabel(data.status)}</Badge>
               </div>
-              <ul className="grid gap-1.5">
-                {data.compartments.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between text-sm">
-                    <span>{c.label}</span>
-                    <span className="text-ink-muted">{c.size}</span>
-                  </li>
-                ))}
-                {data.compartments.length === 0 ? (
-                  <li className="text-sm text-ink-muted">ยังไม่มีช่องล็อกเกอร์</li>
-                ) : null}
-              </ul>
+
+              <AdminTable>
+                <AdminTableHead>
+                  <tr>
+                    <AdminTh>ป้ายช่อง</AdminTh>
+                    <AdminTh>ขนาด</AdminTh>
+                    <AdminTh className="text-right">ลบ</AdminTh>
+                  </tr>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {data.compartments.length === 0 ? (
+                    <tr>
+                      <AdminTd colSpan={3} className="text-center text-ink-muted">
+                        ยังไม่มีช่องล็อกเกอร์
+                      </AdminTd>
+                    </tr>
+                  ) : (
+                    data.compartments.map((compartment) => (
+                      <tr key={compartment.id}>
+                        <AdminTd className="font-medium">{compartment.label}</AdminTd>
+                        <AdminTd className="text-ink-muted">{compartment.size}</AdminTd>
+                        <AdminTd className="text-right">
+                          <button
+                            type="button"
+                            className={tableDangerActionClass}
+                            disabled={removeCompartment.isPending}
+                            onClick={() => void askRemoveCompartment(compartment)}
+                          >
+                            ลบ
+                          </button>
+                        </AdminTd>
+                      </tr>
+                    ))
+                  )}
+                </AdminTableBody>
+              </AdminTable>
+
               <AddCompartmentForm
                 pending={addCompartment.isPending}
-                error={addCompartment.isError ? addCompartment.error : null}
                 onSubmit={(body) => addCompartment.mutate(body)}
               />
             </div>
 
             <div className={`${cardClass} p-4`}>
-              <p className={`${labelClass} mb-2`}>ราคาต่อชั่วโมง</p>
-              <div className="grid gap-2">
-                {SIZES.map((size) => (
-                  <PricingRow
-                    key={size}
-                    size={size}
-                    rate={data.pricing[size]}
-                    pending={upsertPricing.isPending && upsertPricing.variables?.size === size}
-                    onSave={(rate) => upsertPricing.mutate({ size, rate })}
-                  />
-                ))}
-              </div>
+              <p className={`${labelClass} mb-3`}>ราคาต่อชั่วโมง</p>
+              <AdminTable>
+                <AdminTableHead>
+                  <tr>
+                    <AdminTh>ขนาด</AdminTh>
+                    <AdminTh>เรท (฿/ชม.)</AdminTh>
+                    <AdminTh className="text-right">บันทึก</AdminTh>
+                  </tr>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {SIZES.map((size) => (
+                    <PricingRow
+                      key={size}
+                      size={size}
+                      rate={data.pricing[size]}
+                      pending={upsertPricing.isPending && upsertPricing.variables?.size === size}
+                      onSave={(rate) => upsertPricing.mutate({ size, rate })}
+                    />
+                  ))}
+                </AdminTableBody>
+              </AdminTable>
             </div>
           </div>
         }
       />
+
+      {dialog}
     </Page>
   )
 }
 
-function StationForm({
-  name,
-  address,
-  latitude,
-  longitude,
-  status,
-  pending,
-  error,
-  onSubmit,
-}: {
+type StationFormValues = {
   name: string
   address: string
   latitude: number
   longitude: number
   status: string
+}
+
+function StationForm({
+  station,
+  pending,
+  onSubmit,
+}: {
+  station: StationFormValues
   pending: boolean
-  error: unknown
-  onSubmit: (body: {
-    name: string
-    address: string
-    latitude: number
-    longitude: number
-    status: string
-  }) => void
+  onSubmit: (body: StationFormValues) => void
 }) {
   const [form, setForm] = useState({
-    name,
-    address,
-    latitude: String(latitude),
-    longitude: String(longitude),
-    status,
+    name: station.name,
+    address: station.address,
+    latitude: String(station.latitude),
+    longitude: String(station.longitude),
+    status: station.status,
   })
+
+  const dirty =
+    form.name !== station.name ||
+    form.address !== station.address ||
+    form.latitude !== String(station.latitude) ||
+    form.longitude !== String(station.longitude) ||
+    form.status !== station.status
 
   return (
     <form
@@ -193,7 +243,13 @@ function StationForm({
         const lat = Number(form.latitude)
         const lng = Number(form.longitude)
         if (Number.isNaN(lat) || Number.isNaN(lng)) return
-        onSubmit({ name: form.name, address: form.address, latitude: lat, longitude: lng, status: form.status })
+        onSubmit({
+          name: form.name,
+          address: form.address,
+          latitude: lat,
+          longitude: lng,
+          status: form.status,
+        })
       }}
     >
       <Field label="ชื่อสถานี">
@@ -238,25 +294,27 @@ function StationForm({
           onChange={(value) => setForm((f) => ({ ...f, status: value }))}
         />
       </Field>
-      {error ? (
-        <FormError
-          message={error instanceof ApiRequestError ? error.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่'}
-        />
-      ) : null}
-      <button type="submit" className={`${primaryButtonClass} w-auto min-w-32`} disabled={pending}>
-        {pending ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          className={`${primaryButtonClass} w-auto min-w-32`}
+          disabled={pending || !dirty}
+        >
+          {pending ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
+        </button>
+        {dirty && !pending ? (
+          <span className="text-xs text-ink-muted">มีการแก้ไขที่ยังไม่บันทึก</span>
+        ) : null}
+      </div>
     </form>
   )
 }
 
 function AddCompartmentForm({
   pending,
-  error,
   onSubmit,
 }: {
   pending: boolean
-  error: unknown
   onSubmit: (body: { size: Size; label: string }) => void
 }) {
   const [size, setSize] = useState<Size>('Small')
@@ -264,7 +322,7 @@ function AddCompartmentForm({
 
   return (
     <form
-      className="mt-3 flex items-end gap-2 border-t border-line pt-3"
+      className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3"
       onSubmit={(event) => {
         event.preventDefault()
         if (!label.trim()) return
@@ -280,21 +338,18 @@ function AddCompartmentForm({
         onChange={(value) => setSize(value as Size)}
       />
       <input
-        className={`${fieldClass} h-8 min-h-0 flex-1`}
+        className={`${fieldClass} h-9 min-h-0 min-w-[120px] flex-1`}
         placeholder="ป้ายช่อง เช่น S-05"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
       />
-      <button type="submit" className={`${primaryButtonClass} h-8 min-h-0 w-auto px-3`} disabled={pending}>
-        เพิ่ม
+      <button
+        type="submit"
+        className={`${primaryButtonClass} h-9 min-h-0 w-auto px-3`}
+        disabled={pending}
+      >
+        เพิ่มช่อง
       </button>
-      {error ? (
-        <div className="basis-full">
-          <FormError
-            message={error instanceof ApiRequestError ? error.message : 'เพิ่มช่องไม่สำเร็จ'}
-          />
-        </div>
-      ) : null}
     </form>
   )
 }
@@ -316,27 +371,33 @@ function PricingRow({
     setValue(rate != null ? String(rate) : '')
   }, [rate])
 
+  const changed = value !== (rate != null ? String(rate) : '')
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-16 text-sm text-ink-muted">{size}</span>
-      <input
-        className={`${fieldClass} h-8 min-h-0 flex-1`}
-        type="number"
-        step="0.01"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-      />
-      <button
-        type="button"
-        className={`${primaryButtonClass} h-8 min-h-0 w-auto px-3`}
-        disabled={pending}
-        onClick={() => {
-          const n = Number(value)
-          if (!Number.isNaN(n)) onSave(n)
-        }}
-      >
-        บันทึก
-      </button>
-    </div>
+    <tr>
+      <AdminTd className="text-ink-muted">{size}</AdminTd>
+      <AdminTd>
+        <input
+          className={`${fieldClass} h-9 min-h-0`}
+          type="number"
+          step="0.01"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </AdminTd>
+      <AdminTd className="text-right">
+        <button
+          type="button"
+          className={tableActionClass}
+          disabled={pending || !changed}
+          onClick={() => {
+            const next = Number(value)
+            if (!Number.isNaN(next)) onSave(next)
+          }}
+        >
+          {pending ? '…' : 'บันทึก'}
+        </button>
+      </AdminTd>
+    </tr>
   )
 }
