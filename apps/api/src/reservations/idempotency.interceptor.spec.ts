@@ -1,6 +1,9 @@
 import { CallHandler, ExecutionContext, HttpStatus } from '@nestjs/common';
 import { ApiError } from '../common/http-error';
-import { IdempotencyInterceptor } from './idempotency.interceptor';
+import {
+  IdempotencyInterceptor,
+  runExclusive,
+} from './idempotency.interceptor';
 
 function httpContext() {
   return {
@@ -26,5 +29,34 @@ describe('IdempotencyInterceptor', () => {
         code: 'IDEMPOTENCY_KEY_REQUIRED',
       });
     }
+  });
+
+  it('runs the same user+key callback one at a time', async () => {
+    const locks = new Map<string, Promise<void>>();
+    let concurrent = 0;
+    let maxConcurrent = 0;
+    let created = 0;
+
+    async function attempt() {
+      return runExclusive(
+        'alice',
+        'same-key',
+        async () => {
+          concurrent += 1;
+          maxConcurrent = Math.max(maxConcurrent, concurrent);
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          created += 1;
+          concurrent -= 1;
+          return created;
+        },
+        locks,
+      );
+    }
+
+    const [first, second] = await Promise.all([attempt(), attempt()]);
+
+    expect(maxConcurrent).toBe(1);
+    expect(first).toBe(1);
+    expect(second).toBe(2);
   });
 });

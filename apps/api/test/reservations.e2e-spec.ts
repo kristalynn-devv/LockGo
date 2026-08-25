@@ -135,6 +135,34 @@ describe('Reservations concurrency (e2e)', () => {
     expect(second.body.id).toBe(first.body.id);
   });
 
+  it('returns the same reservation when the same key is sent concurrently', async () => {
+    const startTime = futureHour(38);
+    const key = `idem-conc-${startTime}`;
+    const payload = {
+      station_id: centralId,
+      size: 'Medium',
+      start_time: startTime,
+      duration_hours: 2,
+    };
+
+    const [first, second] = await Promise.all([
+      request(app.getHttpServer())
+        .post('/api/reservations')
+        .set('Authorization', `Bearer ${aliceToken}`)
+        .set('Idempotency-Key', key)
+        .send(payload),
+      request(app.getHttpServer())
+        .post('/api/reservations')
+        .set('Authorization', `Bearer ${aliceToken}`)
+        .set('Idempotency-Key', key)
+        .send(payload),
+    ]);
+
+    expect([first.status, second.status]).toEqual([201, 201]);
+    expect(second.body.reservation_number).toBe(first.body.reservation_number);
+    expect(second.body.id).toBe(first.body.id);
+  });
+
   it('returns 409 when the chosen size has no free compartment', async () => {
     const startTime = futureHour(40);
     const payload = {

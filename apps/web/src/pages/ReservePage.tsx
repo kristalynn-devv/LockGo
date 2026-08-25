@@ -59,6 +59,7 @@ export function ReservePage() {
   const token = session?.access_token ?? ''
   const queryClient = useQueryClient()
   const idempotencyKey = useRef(crypto.randomUUID())
+  const confirmLock = useRef(false)
 
   const startDefault = useMemo(() => nextHour(), [])
   const requestedSize = params.get('size')
@@ -95,6 +96,7 @@ export function ReservePage() {
       })
     },
     onError: () => {
+      confirmLock.current = false
       idempotencyKey.current = crypto.randomUUID()
       void queryClient.invalidateQueries({ queryKey: ['lockers', 'detail', id] })
     },
@@ -154,6 +156,7 @@ export function ReservePage() {
 
   function onConfirm() {
     setFormError(null)
+    if (confirmLock.current || mutation.isPending) return
     if (!validStart) {
       setFormError('กรุณาเลือกวันและเวลาให้ถูกต้อง')
       return
@@ -166,6 +169,7 @@ export function ReservePage() {
       setFormError('จองล่วงหน้าได้ไม่เกิน 7 วัน')
       return
     }
+    confirmLock.current = true
     mutation.mutate()
   }
 

@@ -26,6 +26,12 @@
   });
 ```
 
+```138:164:apps/api/test/reservations.e2e-spec.ts
+  it('returns the same reservation when the same key is sent concurrently', async () => {
+    // POST คู่ขนานด้วย key เดิม → 201 ทั้งคู่ และ id เดียวกัน
+  });
+```
+
 ```82:108:apps/api/test/reservations.e2e-spec.ts
   it('lets only one of two concurrent bookings take the last Large slot', async () => {
     // Alice และ Bob พร้อมกัน → 201 + 409
@@ -40,21 +46,22 @@
 
 | ชั้น | ทำอะไร | ไม่พอถ้าอยู่ชั้นเดียว |
 |------|--------|------------------------|
-| หน้าบ้าน | `disabled` + `isPending` + `useRef` key ต่อหน้า | ผู้ใช้ช้า / retry / tab สองอันยังยิงซ้ำได้ |
-| Nest | `Idempotency-Key` บังคับ จำคำขอสำเร็จของ user คนนั้น | ไม่ได้ล็อกช่อง คนละคนยังแย่งใบสุดท้ายได้ |
+| หน้าบ้าน | `confirmLock` + `disabled` + `isPending` + `useRef` key ต่อหน้า | ผู้ใช้ช้า / retry / tab สองอันยังยิงซ้ำได้ |
+| Nest | `Idempotency-Key` บังคับ จำคำขอสำเร็จ และล็อก `(user, key)` ก่อนสร้าง | ไม่ได้ล็อกช่อง คนละคนยังแย่งใบสุดท้ายได้ |
 | Postgres | `SELECT … FOR UPDATE` แล้ว INSERT ภายใต้ `EXCLUDE` | ไม่รู้ว่าคลิกซ้ำกับคนละคน |
 
 ## 4. กันไม่ให้เกิดซ้ำ — ของที่ทำจริง
 
-**หน้าบ้าน** — สร้าง key ครั้งเดียวต่อหน้า ไม่สร้างตอนคลิก และปิดปุ่มตอนค้าง
+**หน้าบ้าน** — สร้าง key ครั้งเดียวต่อหน้า ไม่สร้างตอนคลิก ตั้ง `confirmLock` ทันทีตอนกด (ก่อน React render) และปิดปุ่มตอนค้าง
 
-```61:61:apps/web/src/pages/ReservePage.tsx
+```61:62:apps/web/src/pages/ReservePage.tsx
   const idempotencyKey = useRef(crypto.randomUUID())
+  const confirmLock = useRef(false)
 ```
 
 เดสก์ท็อป (การ์ดสรุป) และมือถือ (`ActionBar`) ใช้ `disabled` ชุดเดียวกัน — `mutation.isPending` หรือเวลายังเลือกไม่ได้
 
-```345:351:apps/web/src/pages/ReservePage.tsx
+```349:355:apps/web/src/pages/ReservePage.tsx
             <button
               type="button"
               className={`${primaryButtonClass} mt-3.5 hidden w-full lg:inline-flex`}
@@ -63,7 +70,7 @@
             >
 ```
 
-```364:368:apps/web/src/pages/ReservePage.tsx
+```368:372:apps/web/src/pages/ReservePage.tsx
         <button
           type="button"
           className={compactButtonClass}
@@ -71,13 +78,13 @@
           onClick={onConfirm}
 ```
 
-**Nest** — หา `(user_id, key)` ก่อนเข้า service เจอแล้วคืนใบเดิมเป็น 201 ไม่สร้างแถวใหม่ 409 ไม่ถูกเก็บ จึงเปลี่ยนเวลาแล้วยิงใหม่ได้
+**Nest** — บังคับ header แล้วหา `(user_id, key)` ก่อนเข้า service เจอแล้วคืนใบเดิมเป็น 201 ไม่สร้างแถวใหม่ 409 ไม่ถูกเก็บ จึงเปลี่ยนเวลาแล้วยิงใหม่ได้ คำขอคู่ขนานที่ใช้ key เดียวกันถูกล็อกในโปรเซสก่อน lookup เพื่อไม่ให้ทั้งคู่พลาด SELECT แล้วสร้างใบสองใบ
 
-```45:49:apps/api/src/reservations/idempotency.interceptor.ts
-        if (existing[0]) {
-          response.status(HttpStatus.CREATED);
-          return of(existing[0].responseBody);
-        }
+```83:86:apps/api/src/reservations/idempotency.interceptor.ts
+    if (existing[0]) {
+      response.status(HttpStatus.CREATED);
+      return existing[0].responseBody;
+    }
 ```
 
 **Postgres** — หมดอายุที่เลย grace 15 นาทีในทรานแซกชันเดียวกัน แล้วล็อกแถวช่องก่อนเลือกช่องว่าง
