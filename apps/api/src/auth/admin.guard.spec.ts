@@ -1,6 +1,7 @@
 import { ExecutionContext, HttpStatus } from '@nestjs/common';
 import { ApiError } from '../common/http-error';
 import { AdminGuard } from './admin.guard';
+import { adminRoleCache } from './auth-cache';
 
 const whereMock = jest.fn();
 
@@ -25,6 +26,7 @@ function httpContext(user?: { id: string; email?: string }) {
 describe('AdminGuard', () => {
   beforeEach(() => {
     whereMock.mockReset();
+    adminRoleCache.clear();
   });
 
   it('rejects a request with no authenticated user', async () => {
