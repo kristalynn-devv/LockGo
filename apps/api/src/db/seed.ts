@@ -162,6 +162,13 @@ async function customerIdByName(sql: Sql, name: string) {
   return rows[0]?.id;
 }
 
+async function customerIdByEmail(sql: Sql, email: string) {
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM auth.users WHERE email = ${email} LIMIT 1
+  `;
+  return rows[0]?.id;
+}
+
 async function stationIdByName(sql: Sql, name: string) {
   const rows = await sql<{ id: string }[]>`
     SELECT id FROM public.locker_stations WHERE name = ${name} LIMIT 1
@@ -419,18 +426,17 @@ async function seedScenarioReservations(sql: Sql) {
 /**
  * Carol is added to the staff `public.users` table for local dev/testing of
  * the admin area; Alice and Bob stay plain customers (public.customers only —
- * there is no self-serve staff signup, admins are added by hand). Her row in
- * public.customers is created by the `on_auth_user_created` trigger right
- * after upsertAuthUser signs her up, so display_name is already set by the
- * time this runs. `role` defaults to 'admin' — kept as a column (not just
- * row presence) so a future non-admin staff role has somewhere to live.
- * If the trigger is ever missing, add her manually:
- *   INSERT INTO public.users (id, display_name, role) VALUES ('<carol-uuid-from-supabase>', 'Carol LockGo', 'admin');
+ * there is no self-serve staff signup, admins are added by hand). Promoted by
+ * `id` (not display_name) since display_name is only set from auth metadata
+ * on first account creation — if Carol's auth user already existed with
+ * different/no metadata, a name match would silently match zero rows and
+ * leave her un-promoted. `role` defaults to 'admin' — kept as a column (not
+ * just row presence) so a future non-admin staff role has somewhere to live.
  */
-async function promoteToStaff(sql: Sql, displayName: string) {
+async function promoteToStaff(sql: Sql, id: string, displayName: string) {
   await sql`
     INSERT INTO public.users (id, display_name)
-    SELECT id, display_name FROM public.customers WHERE display_name = ${displayName}
+    VALUES (${id}::uuid, ${displayName})
     ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name
   `;
 }
@@ -491,7 +497,14 @@ async function main() {
     }
   }
 
-  await promoteToStaff(sql, 'Carol LockGo');
+  const carol = TEST_USERS.find((user) => user.email === 'carol.lockgo@example.com')!;
+  const carolId = await customerIdByEmail(sql, carol.email);
+  if (!carolId) {
+    throw new Error(
+      `seed: could not find auth user for ${carol.email} — cannot promote to staff`,
+    );
+  }
+  await promoteToStaff(sql, carolId, carol.name);
 
   const scenarios = await seedScenarioReservations(sql);
 
