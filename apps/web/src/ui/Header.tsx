@@ -1,6 +1,8 @@
 import { APP_NAME } from '@lockgo/shared'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useClickOutside } from '../lib/useClickOutside'
 import { awaitingPayment, inUse, useReservationList } from '../lib/reservations'
 import { useTheme } from '../lib/theme'
 import { Icon, type IconName } from './icons'
@@ -105,8 +107,40 @@ function tabBadge(tab: (typeof TABS)[number], dueCount: number, activeCount: num
   return null
 }
 
-export function Header() {
+export function ProfileMenu() {
   const { user, signOut } = useAuth()
+  const [open, setOpen] = useState(false)
+  const root = useClickOutside<HTMLDivElement>(open, setOpen)
+
+  return (
+    <div ref={root} className="relative">
+      <button
+        type="button"
+        aria-label="เมนูโปรไฟล์"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="grid size-10 cursor-pointer place-items-center rounded-full border border-accent-line bg-accent-soft text-xs font-bold text-accent-text transition-colors hover:border-accent"
+      >
+        {initials(user?.email)}
+      </button>
+      {open ? (
+        <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-surface p-3 shadow-sm">
+          <p className="truncate text-xs text-ink-faint">{user?.email}</p>
+          <button
+            type="button"
+            className={`${secondaryButtonClass} mt-2.5 w-full`}
+            onClick={() => void signOut()}
+          >
+            ออกจากระบบ
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function Header() {
+  const { user } = useAuth()
   const isMatch = useTabMatch()
   const { dueCount, activeCount } = useNavCounts()
 
@@ -152,24 +186,7 @@ export function Header() {
           <span className="hidden max-w-40 truncate text-xs text-ink-faint md:inline">
             {user?.email}
           </span>
-          <details className="group relative">
-            <summary
-              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-accent-line bg-accent-soft text-xs font-bold text-accent-text transition-colors hover:border-accent"
-              aria-label="เมนูโปรไฟล์"
-            >
-              {initials(user?.email)}
-            </summary>
-            <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-surface p-3 shadow-sm">
-              <p className="truncate text-xs text-ink-faint">{user?.email}</p>
-              <button
-                type="button"
-                className={`${secondaryButtonClass} mt-2.5 w-full`}
-                onClick={() => void signOut()}
-              >
-                ออกจากระบบ
-              </button>
-            </div>
-          </details>
+          <ProfileMenu />
         </div>
       </div>
     </header>

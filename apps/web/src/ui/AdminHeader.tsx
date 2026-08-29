@@ -1,9 +1,8 @@
 import { APP_NAME } from '@lockgo/shared'
 import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../lib/auth'
-import { ThemeButton } from './Header'
+import { ProfileMenu, ThemeButton } from './Header'
 import { Icon, type IconName } from './icons'
-import { secondaryButtonClass, shellPadClass, shellWidthClass } from './Page'
+import { shellPadClass, shellWidthClass } from './Page'
 
 const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/admin', label: 'สรุป', icon: 'grid' },
@@ -12,11 +11,6 @@ const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/admin/payments', label: 'การชำระเงิน', icon: 'card' },
   { to: '/admin/users', label: 'ผู้ใช้', icon: 'user' },
 ]
-
-function initials(email?: string | null) {
-  if (!email) return '?'
-  return email.slice(0, 2).toUpperCase()
-}
 
 function isActive(pathname: string, to: string) {
   return to === '/admin' ? pathname === '/admin' : pathname.startsWith(to)
@@ -27,7 +21,6 @@ function isActive(pathname: string, to: string) {
  * แยกสองแถบเพราะเมนูห้าอันเบียดกับโลโก้จนอ่านไม่ออกบนจอแคบ
  */
 export function AdminHeader() {
-  const { user, signOut } = useAuth()
   const { pathname } = useLocation()
 
   return (
@@ -49,24 +42,7 @@ export function AdminHeader() {
 
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeButton />
-            <details className="group relative">
-              <summary
-                className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-accent-line bg-accent-soft text-xs font-bold text-accent-text transition-colors hover:border-accent"
-                aria-label="เมนูโปรไฟล์"
-              >
-                {initials(user?.email)}
-              </summary>
-              <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-surface p-3 shadow-sm">
-                <p className="truncate text-xs text-ink-faint">{user?.email}</p>
-                <button
-                  type="button"
-                  className={`${secondaryButtonClass} mt-2.5 w-full`}
-                  onClick={() => void signOut()}
-                >
-                  ออกจากระบบ
-                </button>
-              </div>
-            </details>
+            <ProfileMenu />
           </div>
         </div>
 
