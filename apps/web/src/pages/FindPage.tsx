@@ -162,8 +162,13 @@ export function FindPage() {
   }
 
   function locateHere() {
-    if (usingHere || locating) {
+    if (locating) return
+    if (usingHere) {
       clearHere()
+      return
+    }
+    if (!window.isSecureContext) {
+      setGeoError('ต้องเปิดเว็บผ่าน HTTPS (หรือ localhost) เพื่อใช้ตำแหน่งปัจจุบัน - เลือกสถานที่จากรายการได้')
       return
     }
     if (!navigator.geolocation) {
@@ -181,8 +186,14 @@ export function FindPage() {
         })
         setLocating(false)
       },
-      () => {
-        setGeoError('ไม่ได้รับอนุญาตตำแหน่ง - เลือกสถานที่จากรายการได้')
+      (error) => {
+        if (error.code === error.TIMEOUT) {
+          setGeoError('หาตำแหน่งไม่สำเร็จ (หมดเวลา) - ลองใหม่อีกครั้ง หรือเลือกสถานที่จากรายการ')
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setGeoError('ไม่สามารถระบุตำแหน่งได้ในขณะนี้ - ลองใหม่อีกครั้ง หรือเลือกสถานที่จากรายการ')
+        } else {
+          setGeoError('ไม่ได้รับอนุญาตตำแหน่ง - อนุญาตสิทธิ์ตำแหน่งในเบราว์เซอร์แล้วลองใหม่ หรือเลือกสถานที่จากรายการ')
+        }
         setLocating(false)
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
@@ -270,7 +281,8 @@ export function FindPage() {
             type="button"
             aria-label="ใกล้ฉัน"
             aria-pressed={usingHere}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors ${usingHere
+            disabled={locating}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${usingHere
                 ? 'border-accent bg-accent-soft text-accent-text'
                 : 'border-line-strong text-ink-muted hover:bg-elevated'
               }`}
@@ -280,6 +292,16 @@ export function FindPage() {
             <span>{locating ? 'กำลังหา…' : 'ใกล้ฉัน'}</span>
           </button>
         </div>
+
+        {geoError ? (
+          <div
+            role="alert"
+            className="mt-2 flex items-start gap-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-warn"
+          >
+            <Icon name="alert" className="mt-0.5 size-4 shrink-0" />
+            <span>{geoError}</span>
+          </div>
+        ) : null}
 
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <button
@@ -366,8 +388,6 @@ export function FindPage() {
         detail={(item) => item.station_name}
         action="ดู QR"
       />
-
-      {geoError ? <p className="mb-3 text-sm text-ink-muted">{geoError}</p> : null}
 
       {lockers.isSuccess ? (
         <div className="mb-3 flex items-baseline justify-between gap-3">
