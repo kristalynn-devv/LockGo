@@ -142,3 +142,7 @@ pnpm build      # build both
 [ERD](./docs/erd.md) · [design](./docs/design.md) · [git workflow](./docs/git-workflow.md) ·
 [AI workflow](./docs/ai-workflow.md) · [AI prompts](./docs/ai-prompts.md) ·
 [AI code review](./docs/ai-code-review.md) · [debugging challenge](./docs/debugging-challenge.md)
+
+## License
+
+[MIT](./LICENSE) © 2026 Kristalyn Narongpiyawatha
